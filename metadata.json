@@ -1,0 +1,7 @@
+{
+  "name": "PharmaGuide",
+  "description": "Assistant intelligent pour la vérification des médicaments, leurs indications, contre-indications et interactions.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
