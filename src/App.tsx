@@ -269,15 +269,6 @@ const App: React.FC = () => {
               </button>
 
               <button 
-                onClick={toggleApiKeyModal}
-                className={`relative p-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 ${showApiKeyModal ? 'bg-amber-50 text-amber-600 shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
-                title="Clé API & Vercel"
-              >
-                <KeyRound className="w-5 h-5" />
-                <span className={`absolute -top-1 -right-1 text-[9px] font-bold w-2.5 h-2.5 rounded-full border-2 border-white ${hasEffectiveKey ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-              </button>
-
-              <button 
                 onClick={toggleInfo}
                 className={`p-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 ${showInfo ? 'bg-indigo-50 text-indigo-600 shadow-inner' : 'text-slate-400 hover:bg-slate-50'}`}
                 title="Aide et Infos"
