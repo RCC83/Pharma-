@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { SearchState, MedicationInfo } from './types';
-import { fetchMedicationInfo } from './services/geminiService';
+import { 
+  fetchMedicationInfo, 
+  setCustomApiKey, 
+  getStoredApiKey, 
+  getEffectiveApiKey 
+} from './services/geminiService';
 import { SearchBar } from './components/SearchBar';
 import { SectionCard } from './components/SectionCard';
 import { AlertBadge } from './components/AlertBadge';
@@ -26,6 +31,9 @@ import {
   LifeBuoy,
   Stethoscope,
   Download,
+  KeyRound,
+  ExternalLink,
+  Key
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -47,6 +55,10 @@ const App: React.FC = () => {
   });
   const [showPharmacy, setShowPharmacy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [customApiKeyInput, setCustomApiKeyInput] = useState<string>(() => getStoredApiKey());
+  const [hasEffectiveKey, setHasEffectiveKey] = useState<boolean>(() => !!getEffectiveApiKey());
+  
   const [userContext, setUserContext] = useState<string>(() => {
     console.log("PharmaGuide: Initializing userContext...");
     return localStorage.getItem('pharmaguide_context') || '';
@@ -204,11 +216,30 @@ const App: React.FC = () => {
   const togglePharmacy = () => {
     setShowPharmacy(!showPharmacy);
     setShowInfo(false);
+    setShowApiKeyModal(false);
   };
 
   const toggleInfo = () => {
     setShowInfo(!showInfo);
     setShowPharmacy(false);
+    setShowApiKeyModal(false);
+  };
+
+  const toggleApiKeyModal = () => {
+    setShowApiKeyModal(!showApiKeyModal);
+    setShowPharmacy(false);
+    setShowInfo(false);
+  };
+
+  const handleSaveApiKey = () => {
+    setCustomApiKey(customApiKeyInput);
+    const effective = getEffectiveApiKey();
+    setHasEffectiveKey(!!effective);
+    if (customApiKeyInput.trim()) {
+      toast.success("Clé API Gemini personnalisée enregistrée !");
+    } else {
+      toast.info("Clé API personnalisée effacée.");
+    }
   };
 
   return (
@@ -235,6 +266,15 @@ const App: React.FC = () => {
                     {patientMedications.length}
                   </span>
                 )}
+              </button>
+
+              <button 
+                onClick={toggleApiKeyModal}
+                className={`relative p-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 ${showApiKeyModal ? 'bg-amber-50 text-amber-600 shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
+                title="Clé API & Vercel"
+              >
+                <KeyRound className="w-5 h-5" />
+                <span className={`absolute -top-1 -right-1 text-[9px] font-bold w-2.5 h-2.5 rounded-full border-2 border-white ${hasEffectiveKey ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
               </button>
 
               <button 
@@ -366,6 +406,86 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
+
+          {showApiKeyModal && (
+            <div className="absolute top-full left-0 w-full bg-white border-b border-slate-200 shadow-2xl z-40 animate-fade-in-up max-h-[80vh] overflow-y-auto no-scrollbar">
+              <div className="p-5 space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                      <KeyRound className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight">Configuration Clé API Gemini</h3>
+                      <p className="text-[11px] text-slate-500">Pour Vercel, Netlify, PWA & Antigravity</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowApiKeyModal(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* API Key Status */}
+                <div className={`p-3.5 rounded-xl text-xs flex items-center gap-3 border ${hasEffectiveKey ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${hasEffectiveKey ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                  <span className="font-medium">
+                    {hasEffectiveKey 
+                      ? "✓ Clé API Gemini active et opérationnelle." 
+                      : "⚠️ Aucune clé API active détectée. Veuillez en saisir une ci-dessous ou la configurer sur Vercel."}
+                  </span>
+                </div>
+
+                {/* Direct Key Entry */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700">Saisir directement votre Clé API Gemini :</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="password"
+                      value={customApiKeyInput}
+                      onChange={(e) => setCustomApiKeyInput(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="flex-1 p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-mono"
+                    />
+                    <button 
+                      onClick={handleSaveApiKey}
+                      className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 shrink-0"
+                    >
+                      Enregistrer
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400">La clé est sauvegardée localement dans votre navigateur (`localStorage`).</p>
+                </div>
+
+                {/* Vercel Deployment Instructions */}
+                <div className="pt-3 border-t border-slate-100 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" /> Guide de déploiement sur Vercel
+                  </h4>
+                  <ol className="space-y-2 text-xs text-slate-600 list-decimal list-inside bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <li className="leading-relaxed">
+                      Obtenez une clé API gratuite sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold">Google AI Studio</a>.
+                    </li>
+                    <li className="leading-relaxed">
+                      Dans votre projet Vercel, allez dans <strong>Settings &gt; Environment Variables</strong>.
+                    </li>
+                    <li className="leading-relaxed">
+                      Ajoutez le nom : <code className="bg-white px-1.5 py-0.5 border rounded text-[11px] font-mono text-blue-700">VITE_GEMINI_API_KEY</code> et collez votre clé.
+                    </li>
+                    <li className="leading-relaxed">
+                      Cliquez sur <strong>Redeploy</strong> dans Vercel pour recompiler avec la clé.
+                    </li>
+                  </ol>
+                </div>
+
+                <button 
+                  onClick={() => setShowApiKeyModal(false)}
+                  className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-slate-200 transition-all"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          )}
         </header>
 
         <main id="main-scroll" className="flex-grow w-full px-5 py-6 overflow-y-auto no-scrollbar pb-10">
@@ -380,9 +500,24 @@ const App: React.FC = () => {
           </div>
 
           {state.error && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm flex items-center gap-3 mb-6 shadow-sm">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-              <p>{state.error}</p>
+            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm space-y-3 mb-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <p>{state.error}</p>
+              </div>
+              {(state.error.includes("Clé API") || state.error.includes("api key") || state.error.includes("Vercel") || state.error.includes("configurée")) && (
+                <button 
+                  onClick={() => {
+                    setShowApiKeyModal(true);
+                    setShowPharmacy(false);
+                    setShowInfo(false);
+                  }}
+                  className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Saisir une clé API / Configurer Vercel
+                </button>
+              )}
             </div>
           )}
 

@@ -3,18 +3,42 @@ import { MedicationInfo } from "../types";
 
 let aiInstance: GoogleGenAI | null = null;
 
+export const setCustomApiKey = (key: string) => {
+  const trimmedKey = key.trim();
+  if (trimmedKey) {
+    localStorage.setItem("pharmaguide_custom_gemini_api_key", trimmedKey);
+  } else {
+    localStorage.removeItem("pharmaguide_custom_gemini_api_key");
+  }
+  aiInstance = null; // Réinitialiser l'instance pour appliquer la nouvelle clé
+};
+
+export const getStoredApiKey = (): string => {
+  return localStorage.getItem("pharmaguide_custom_gemini_api_key") || "";
+};
+
+export const getEffectiveApiKey = (): string => {
+  let apiKey = localStorage.getItem("pharmaguide_custom_gemini_api_key");
+  if (!apiKey) {
+    apiKey = process.env.GEMINI_API_KEY || "";
+  }
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  }
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    apiKey = (import.meta as any).env?.GEMINI_API_KEY || "";
+  }
+  return apiKey || "";
+};
+
 const getAI = () => {
   if (!aiInstance) {
-    // On essaie d'abord process.env.GEMINI_API_KEY (injecté par la plateforme)
-    let apiKey = process.env.GEMINI_API_KEY;
-    
-    // Fallback sur import.meta.env si process.env est vide ou undefined
-    if (!apiKey || apiKey === "undefined" || apiKey === "") {
-      apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
-    }
+    const apiKey = getEffectiveApiKey();
     
     if (!apiKey || apiKey === "undefined" || apiKey === "") {
-      throw new Error("Clé API Gemini non configurée. Veuillez rafraîchir la page ou vérifier vos paramètres.");
+      throw new Error(
+        "Clé API Gemini non configurée. Si vous avez déployé sur Vercel, ajoutez VITE_GEMINI_API_KEY dans les variables d'environnement de Vercel, ou saisissez directement votre clé API dans les paramètres de l'application."
+      );
     }
     
     aiInstance = new GoogleGenAI({ apiKey });
