@@ -80,6 +80,52 @@ const medicationSchema = {
   required: ["name", "description", "indications", "contraindications", "interactions", "alternatives", "warningLevel", "usageTips"]
 };
 
+export const identifyMedicationFromBarcode = async (barcode: string): Promise<string> => {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-lite-preview",
+      contents: `Quel est le nom commercial du médicament français ou international associé au code-barres / CIP / EAN : "${barcode}" ? Réponds UNIQUEMENT par le nom du médicament (exemple : "Doliprane 1000mg", "Spasfon 80mg", "Dafalgan 1g") sans guillemets, sans politesse et sans texte d'accompagnement. Si tu n'as pas le nom exact, retourne uniquement le nom générique ou la molécule la plus probable.`,
+    });
+    const result = response.text?.trim() || barcode;
+    // Nettoyage éventuel de guillemets
+    return result.replace(/^["']|["']$/g, '');
+  } catch (error) {
+    console.error("Erreur lors de la recherche du code-barres:", error);
+    return barcode;
+  }
+};
+
+export const identifyMedicationFromImage = async (base64ImageDataUrl: string): Promise<string> => {
+  try {
+    const ai = getAI();
+    const matches = base64ImageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!matches) throw new Error("Format d'image invalide");
+    
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-lite-preview",
+      contents: [
+        {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data,
+          },
+        },
+        "Analyse cette image de boîte de médicament ou de son code-barres/DataMatrix. Identifie le nom commercial du médicament écrit sur la boîte ou encodé dans le code (ex: Doliprane 1000mg, Spasfon, Dafalgan 1g, Advil 200mg). Réponds UNIQUEMENT avec le nom du médicament, sans explications, sans saut de ligne et sans guillemets.",
+      ],
+    });
+
+    const name = response.text?.trim() || "";
+    return name.replace(/^["']|["']$/g, '');
+  } catch (error) {
+    console.error("Erreur identification photo:", error);
+    throw new Error("Analyse visuelle échouée. Veuillez réessayer avec une photo plus nette.");
+  }
+};
+
 export const fetchMedicationInfo = async (medicationName: string, userContext: string = ""): Promise<MedicationInfo> => {
   try {
     const ai = getAI();

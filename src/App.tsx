@@ -7,6 +7,7 @@ import {
   getEffectiveApiKey 
 } from './services/geminiService';
 import { SearchBar } from './components/SearchBar';
+import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { SectionCard } from './components/SectionCard';
 import { AlertBadge } from './components/AlertBadge';
 import { Alternatives } from './components/Alternatives';
@@ -56,6 +57,7 @@ const App: React.FC = () => {
   const [showPharmacy, setShowPharmacy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [customApiKeyInput, setCustomApiKeyInput] = useState<string>(() => getStoredApiKey());
   const [hasEffectiveKey, setHasEffectiveKey] = useState<boolean>(() => !!getEffectiveApiKey());
   
@@ -487,7 +489,12 @@ const App: React.FC = () => {
                 <p className="text-sm text-slate-500 mb-6 px-4">L'assistant intelligent pour vos traitements et votre sécurité médicale.</p>
               </div>
             )}
-            <SearchBar onSearch={handleSearch} isLoading={state.loading} externalQuery={state.query} />
+            <SearchBar 
+              onSearch={handleSearch} 
+              isLoading={state.loading} 
+              externalQuery={state.query} 
+              onOpenScanner={() => setIsScannerOpen(true)}
+            />
           </div>
 
           {state.error && (
@@ -614,6 +621,16 @@ const App: React.FC = () => {
         </main>
         <div className="h-safe bg-slate-50"></div>
       </div>
+
+      {/* Modal de Scan Caméra / Code-Barres */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={(medicationName) => {
+          setIsScannerOpen(false);
+          handleSearch(medicationName);
+        }}
+      />
     </div>
   );
 };
