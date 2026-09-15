@@ -49,12 +49,41 @@ const getAI = () => {
 const medicationSchema = {
   type: Type.OBJECT,
   properties: {
-    name: { type: Type.STRING, description: "Nom officiel du médicament" },
+    name: { type: Type.STRING, description: "Nom officiel ou commercial du médicament" },
     description: { type: Type.STRING, description: "Brève description pharmacologique" },
     indications: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
       description: "Liste des symptômes ou maladies traités (Soulagement)"
+    },
+    maxDailyDosage: {
+      type: Type.OBJECT,
+      description: "Dosage maximum du médicament par jour (24 heures) selon les indications et profils de patients",
+      properties: {
+        generalMax: {
+          type: Type.STRING,
+          description: "Dose maximale de référence par 24 heures pour un adulte ou dose plafond absolue (ex: '3 000 mg (3 g) par jour - jusqu'à 4 g max sous surveillance médicale')"
+        },
+        byIndication: {
+          type: Type.ARRAY,
+          description: "Détail du dosage maximal journalier pour chaque indication ou catégorie de patient",
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              indication: { type: Type.STRING, description: "Nom de l'indication ou profil (ex: 'Douleur / Fièvre chez l'adulte (> 50 kg)', 'Enfant selon le poids', 'Crise aiguë')" },
+              maxDaily: { type: Type.STRING, description: "Dose maximale par 24h (ex: '3 g / 24h (max 4 g/24h sur ordonnance)')" },
+              frequencyOrInterval: { type: Type.STRING, description: "Dose par prise et intervalle minimal (ex: '500 mg à 1 000 mg par prise, espacer de 4 à 6 heures minimum')" },
+              notes: { type: Type.STRING, description: "Précisions ou avertissements spécifiques" }
+            },
+            required: ["indication", "maxDaily"]
+          }
+        },
+        safetyWarning: {
+          type: Type.STRING,
+          description: "Mise en garde vitale sur le surdosage et la toxicité en cas de dépassement du dosage maximal journalier"
+        }
+      },
+      required: ["generalMax", "byIndication"]
     },
     contraindications: {
       type: Type.ARRAY,
@@ -77,7 +106,7 @@ const medicationSchema = {
     },
     usageTips: { type: Type.STRING, description: "Conseil d'utilisation rapide (ex: prendre pendant les repas)" }
   },
-  required: ["name", "description", "indications", "contraindications", "interactions", "alternatives", "warningLevel", "usageTips"]
+  required: ["name", "description", "indications", "maxDailyDosage", "contraindications", "interactions", "alternatives", "warningLevel", "usageTips"]
 };
 
 export const identifyMedicationFromBarcode = async (barcode: string): Promise<string> => {
@@ -130,29 +159,23 @@ export const fetchMedicationInfo = async (medicationName: string, userContext: s
   try {
     const ai = getAI();
     const contextPrompt = userContext 
-      ? `IMPORTANT : L'utilisateur a le profil de santé suivant : "${userContext}". Analyse s'il existe des risques spécifiques ou des contre-indications majeures liées à ce profil pour ce médicament et mentionne-les explicitement dans la description ou les conseils.`
+      ? `IMPORTANT : L'utilisateur a le profil de santé suivant : "${userContext}". Analyse s'il existe des risques spécifiques, des ajustements posologiques ou des contre-indications majeures liées à ce profil pour ce médicament et mentionne-les explicitement.`
       : "";
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
-      contents: `Donne-moi des informations médicales précises et structurées pour le médicament : "${medicationName}". 
-      ${contextPrompt}
-      Réponds UNIQUEMENT au format JSON en Français. Si le médicament n'existe pas ou est mal orthographié, essaie de trouver le plus proche.
-      Sois factuel, prudent et synthétique.
-      
-      Format JSON attendu :
-      {
-        "name": "Nom",
-        "description": "Description",
-        "indications": ["Indication 1"],
-        "contraindications": ["Contre-indication 1"],
-        "interactions": ["Interaction 1"],
-        "alternatives": ["Alternative 1"],
-        "warningLevel": "low",
-        "usageTips": "Conseil"
-      }`,
+      model: "gemini-3.8-flash",
+      contents: `Donne-moi des informations médicales précises et structurées pour le médicament : "${medicationName}".
+${contextPrompt}
+
+Points cruciaux à inclure :
+1. Précise le DOSAGE MAXIMUM PAR JOUR (sur 24 heures consécutives) selon chaque indication thérapeutique (ex: adulte > 50kg pour douleurs/fièvre, enfant selon le poids, crise migraineuse, etc.).
+2. Pour chaque indication, précise la dose maximale par prise et l'intervalle minimal obligatoire entre deux prises consécutives.
+3. Fournis une mise en garde explicite sur les risques de toxicité et de surdosage si la dose journalière maximale est dépassée.
+4. Réponds UNIQUEMENT au format JSON strict selon le schéma fourni.`,
       config: {
-        systemInstruction: "Tu es un assistant pharmacien expert. Tu fournis des informations concises, fiables et structurées sur les médicaments en français. Tu analyses les risques en fonction du profil de santé de l'utilisateur si fourni. Tu réponds TOUJOURS au format JSON brut."
+        responseMimeType: "application/json",
+        responseSchema: medicationSchema,
+        systemInstruction: "Tu es un assistant pharmacien hospitalier et d'officine expert et rigoureux. Tu fournis des données pharmacologiques précises, fiables et à jour en français. Tu portes une attention extrême à la posologie maximale sur 24 heures et aux intervalles minimaux entre chaque prise pour prévenir les surdosages graves."
       }
     });
 

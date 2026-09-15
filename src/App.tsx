@@ -9,6 +9,7 @@ import {
 import { SearchBar } from './components/SearchBar';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { SectionCard } from './components/SectionCard';
+import { MaxDosageCard } from './components/MaxDosageCard';
 import { AlertBadge } from './components/AlertBadge';
 import { Alternatives } from './components/Alternatives';
 import { Toaster, toast } from 'sonner';
@@ -145,7 +146,10 @@ const App: React.FC = () => {
 
   const handleShare = async () => {
     if (!state.data) return;
-    const shareText = `${state.data.name.toUpperCase()}\n\n${state.data.description}\n\nIndications : ${state.data.indications.join(', ')}\n\nVia PharmaGuide.`;
+    const maxDosageText = state.data.maxDailyDosage?.generalMax 
+      ? `\n\nDosage max / 24h : ${state.data.maxDailyDosage.generalMax}` 
+      : '';
+    const shareText = `${state.data.name.toUpperCase()}\n\n${state.data.description}\n\nIndications : ${state.data.indications.join(', ')}${maxDosageText}\n\nVia PharmaGuide.`;
     if (navigator.share) {
       try { await navigator.share({ title: `PharmaGuide - ${state.data.name}`, text: shareText, url: window.location.href }); } catch (e) {}
     } else {
@@ -186,6 +190,9 @@ const App: React.FC = () => {
       patientMedications.forEach((med, i) => {
         text += `${i + 1}. ${med.name.toUpperCase()}\n`;
         text += `   - Niveau d'alerte : ${med.warningLevel === 'high' ? 'Élevé' : med.warningLevel === 'medium' ? 'Modéré' : 'Faible'}\n`;
+        if (med.maxDailyDosage?.generalMax) {
+          text += `   - Dosage max / 24h : ${med.maxDailyDosage.generalMax}\n`;
+        }
         text += `   - Description : ${med.description}\n\n`;
       });
     } else {
@@ -322,8 +329,15 @@ const App: React.FC = () => {
                           className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50 border border-slate-100 rounded-xl cursor-pointer transition-all group"
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${med.warningLevel === 'high' ? 'bg-red-500' : med.warningLevel === 'medium' ? 'bg-orange-500' : 'bg-emerald-500'}`} />
-                            <span className="text-sm font-semibold text-slate-700">{med.name}</span>
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${med.warningLevel === 'high' ? 'bg-red-500' : med.warningLevel === 'medium' ? 'bg-orange-500' : 'bg-emerald-500'}`} />
+                            <div>
+                              <span className="text-sm font-semibold text-slate-700 block">{med.name}</span>
+                              {med.maxDailyDosage?.generalMax && (
+                                <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50 font-medium inline-block mt-0.5">
+                                  Max : {med.maxDailyDosage.generalMax}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <button 
                             onClick={(e) => removeFromPatientList(e, med.name)}
@@ -560,6 +574,9 @@ const App: React.FC = () => {
 
               <div className="space-y-4">
                 <SectionCard title="Indications" items={state.data.indications} icon={Pill} variant="default" className="animate-fade-in-up delay-100" />
+                {state.data.maxDailyDosage && (
+                  <MaxDosageCard dosageInfo={state.data.maxDailyDosage} className="animate-fade-in-up delay-150" />
+                )}
                 <SectionCard title="Contre-indications" items={state.data.contraindications} icon={Ban} variant="danger" className="animate-fade-in-up delay-200" />
                 <SectionCard title="Interactions" items={state.data.interactions} icon={Activity} variant="warning" className="animate-fade-in-up delay-300" />
               </div>
