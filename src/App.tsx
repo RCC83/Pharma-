@@ -4,7 +4,8 @@ import {
   fetchMedicationInfo, 
   setCustomApiKey, 
   getStoredApiKey, 
-  getEffectiveApiKey 
+  getEffectiveApiKey,
+  testApiKeyValidity 
 } from './services/geminiService';
 import { SearchBar } from './components/SearchBar';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
@@ -35,7 +36,10 @@ import {
   Download,
   KeyRound,
   ExternalLink,
-  Key
+  Key,
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -60,7 +64,10 @@ const App: React.FC = () => {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [customApiKeyInput, setCustomApiKeyInput] = useState<string>(() => getStoredApiKey());
+  const [showKeyVisible, setShowKeyVisible] = useState<boolean>(false);
   const [hasEffectiveKey, setHasEffectiveKey] = useState<boolean>(() => !!getEffectiveApiKey());
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   
   const [userContext, setUserContext] = useState<string>(() => {
     console.log("PharmaGuide: Initializing userContext...");
@@ -114,15 +121,30 @@ const App: React.FC = () => {
       console.error("Search error:", err);
       let errorMessage = "Erreur lors de la récupération des données.";
       
-      // Extraction du message d'erreur de manière plus robuste
+      // Extraction et interprétation conviviale des erreurs (503, 429, API Key, etc.)
       const rawError = typeof err === 'string' ? err : (err?.message || JSON.stringify(err));
       
-      if (rawError.includes("Forbidden") || rawError.includes("403")) {
-        errorMessage = "L'accès à l'IA est temporairement restreint. Veuillez réessayer dans quelques instants ou vérifier la configuration de l'application.";
+      if (rawError.includes("permission denied") || rawError.includes("PERMISSION_DENIED") || rawError.includes("Forbidden") || rawError.includes("403")) {
+        errorMessage = "Accès refusé par Google Gemini (Permission Denied). Votre clé API Google AI Studio est soit restreinte (restrictions d'IP/domaine ou d'API dans Google Cloud), soit non autorisée pour le modèle Gemini. Veuillez vous assurer que la clé est créée sur aistudio.google.com SANS restriction d'application/IP dans Google Cloud Console.";
+      } else if (rawError.includes("503") || rawError.includes("high demand") || rawError.includes("UNAVAILABLE")) {
+        errorMessage = "Les serveurs de l'IA connaissent actuellement une très forte affluence temporaire. Veuillez patienter quelques secondes et relancer la recherche.";
+      } else if (rawError.includes("429") || rawError.includes("RESOURCE_EXHAUSTED")) {
+        errorMessage = "Limite de requêtes temporairement atteinte. Veuillez patienter une trentaine de secondes avant de réessayer.";
       } else if (rawError.includes("API_KEY_INVALID")) {
-        errorMessage = "La clé API n'est pas valide. Veuillez contacter le support.";
-      } else if (rawError.includes("api key must be set")) {
-        errorMessage = "La clé API Gemini n'est pas configurée. Veuillez rafraîchir la page ou vérifier vos paramètres.";
+        errorMessage = "La clé API n'est pas valide. Veuillez la vérifier dans les paramètres.";
+      } else if (rawError.includes("api key must be set") || rawError.includes("non configurée")) {
+        errorMessage = "La clé API Gemini n'est pas configurée. Veuillez renseigner votre clé API dans les paramètres.";
+      } else if (rawError.startsWith("{") && rawError.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(rawError);
+          if (parsed?.error?.message) {
+            errorMessage = parsed.error.message;
+          } else {
+            errorMessage = "Une erreur est survenue lors de l'analyse. Veuillez réessayer.";
+          }
+        } catch {
+          errorMessage = "Une erreur est survenue lors de l'analyse. Veuillez réessayer.";
+        }
       } else if (rawError !== "{}") {
         errorMessage = rawError;
       }
@@ -244,10 +266,34 @@ const App: React.FC = () => {
     setCustomApiKey(customApiKeyInput);
     const effective = getEffectiveApiKey();
     setHasEffectiveKey(!!effective);
+    setTestResult(null);
     if (customApiKeyInput.trim()) {
       toast.success("Clé API Gemini personnalisée enregistrée !");
     } else {
       toast.info("Clé API personnalisée effacée.");
+    }
+  };
+
+  const handleTestKey = async () => {
+    const keyToTest = customApiKeyInput.trim() || getEffectiveApiKey();
+    if (!keyToTest) {
+      toast.error("Veuillez d'abord coller ou enregistrer une clé API.");
+      return;
+    }
+    setIsTestingKey(true);
+    setTestResult(null);
+    try {
+      const res = await testApiKeyValidity(keyToTest);
+      setTestResult(res);
+      if (res.success) {
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e: any) {
+      setTestResult({ success: false, message: e?.message || "Erreur inconnue." });
+    } finally {
+      setIsTestingKey(false);
     }
   };
 
@@ -280,7 +326,7 @@ const App: React.FC = () => {
               <button 
                 onClick={toggleInfo}
                 className={`p-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 ${showInfo ? 'bg-indigo-50 text-indigo-600 shadow-inner' : 'text-slate-400 hover:bg-slate-50'}`}
-                title="Aide et Infos"
+                title="Aide et Paramètres"
               >
                 <HelpCircle className="w-6 h-6" />
               </button>
@@ -404,12 +450,25 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                <button 
-                  onClick={() => setShowInfo(false)}
-                  className="w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-indigo-100 transition-all"
-                >
-                  J'ai compris
-                </button>
+                <div className="pt-2 border-t border-slate-50 flex flex-col gap-2">
+                  <button 
+                    onClick={() => {
+                      setShowInfo(false);
+                      setShowApiKeyModal(true);
+                    }}
+                    className="w-full py-2 text-[11px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Paramètres avancés / Clé API</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setShowInfo(false)}
+                    className="w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-indigo-100 transition-all"
+                  >
+                    J'ai compris
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -444,15 +503,30 @@ const App: React.FC = () => {
 
                 {/* Direct Key Entry */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">Saisir directement votre Clé API Gemini :</label>
+                  <label className="block text-xs font-bold text-slate-700">Clé API Gemini (masquée) :</label>
                   <div className="flex gap-2">
-                    <input 
-                      type="password"
-                      value={customApiKeyInput}
-                      onChange={(e) => setCustomApiKeyInput(e.target.value)}
-                      placeholder="AIzaSy..."
-                      className="flex-1 p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-mono"
-                    />
+                    <div className="relative flex-1">
+                      <input 
+                        type={showKeyVisible ? "text" : "password"}
+                        value={customApiKeyInput}
+                        onChange={(e) => {
+                          setCustomApiKeyInput(e.target.value);
+                          setTestResult(null);
+                        }}
+                        placeholder="••••••••••••••••••••••••"
+                        autoComplete="off"
+                        spellCheck="false"
+                        className="w-full p-2.5 pr-9 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowKeyVisible(!showKeyVisible)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        title={showKeyVisible ? "Masquer la clé" : "Afficher la clé"}
+                      >
+                        {showKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                     <button 
                       onClick={handleSaveApiKey}
                       className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 shrink-0"
@@ -460,7 +534,32 @@ const App: React.FC = () => {
                       Enregistrer
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-400">La clé est sauvegardée localement dans votre navigateur (`localStorage`).</p>
+                  
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[10px] text-slate-400">Stockée localement et masquée à l'écran.</p>
+                    <button
+                      onClick={handleTestKey}
+                      disabled={isTestingKey || (!customApiKeyInput && !hasEffectiveKey)}
+                      className="px-3 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isTestingKey ? 'animate-spin' : ''}`} />
+                      {isTestingKey ? 'Test en cours...' : 'Tester la clé'}
+                    </button>
+                  </div>
+
+                  {testResult && (
+                    <div className={`mt-2 p-2.5 rounded-xl text-xs flex items-start gap-2 border ${testResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+                      {testResult.success ? (
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p className="font-semibold">{testResult.success ? 'Clé validée avec succès !' : 'Échec du test de la clé :'}</p>
+                        <p className="text-[11px] mt-0.5 leading-relaxed">{testResult.message}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Vercel Deployment Instructions */}
@@ -512,24 +611,40 @@ const App: React.FC = () => {
           </div>
 
           {state.error && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm space-y-3 mb-6 shadow-sm">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                <p>{state.error}</p>
+            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm space-y-3 mb-6 shadow-sm animate-fade-in">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-600 mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <p className="font-semibold text-red-800">Impossible de compléter la recherche</p>
+                  <p className="text-red-700 leading-relaxed text-xs sm:text-sm">{state.error}</p>
+                </div>
               </div>
-              {(state.error.includes("Clé API") || state.error.includes("api key") || state.error.includes("Vercel") || state.error.includes("configurée")) && (
-                <button 
-                  onClick={() => {
-                    setShowApiKeyModal(true);
-                    setShowPharmacy(false);
-                    setShowInfo(false);
-                  }}
-                  className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  Saisir une clé API / Configurer Vercel
-                </button>
-              )}
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                {state.query && (
+                  <button
+                    onClick={() => handleSearch(state.query)}
+                    className="py-2 px-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-2xs"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Réessayer la recherche
+                  </button>
+                )}
+
+                {(state.error.includes("Clé API") || state.error.includes("api key") || state.error.includes("Vercel") || state.error.includes("configurée") || state.error.includes("Permission") || state.error.includes("refusé")) && (
+                  <button 
+                    onClick={() => {
+                      setShowApiKeyModal(true);
+                      setShowPharmacy(false);
+                      setShowInfo(false);
+                    }}
+                    className="py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    Changer la clé API
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
