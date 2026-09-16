@@ -1,17 +1,44 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { MedicationInfo } from "../types";
-import { LOCAL_MEDICATIONS_DB } from "../data/localMedicationsDb";
+import { LOCAL_MEDICATIONS_DB, findLocalMedication } from "../data/localMedicationsDb";
 
 let aiInstance: GoogleGenAI | null = null;
 
-// Liste ordonnée des modèles Flash modernes et compatibles Google AI Studio
+// Modèles ordonnés par VITESSE de réponse (les modèles lite répondent en moins de 1 à 2 secondes)
 export const CANDIDATE_MODELS = [
-  "gemini-flash-latest", // Modèle Flash standard recommandé par Google
-  "gemini-3.8-flash",    // Modèle dernière génération
-  "gemini-3.6-flash",    // Version stable alternative
-  "gemini-2.5-flash",    // Fallback supplémentaire
-  "gemini-1.5-flash"     // Rétrocompatibilité
+  "gemini-3.5-flash-lite", // Ultra-rapide (~600ms - 2s), idéal pour la recherche instantanée
+  "gemini-3.1-flash-lite", // Très rapide en secours
+  "gemini-3.6-flash",      // Flash standard
+  "gemini-flash-latest",   // Modèle de référence
+  "gemini-3.8-flash"       // Fallback
 ];
+
+// Gestion du cache local ultra-rapide (0 ms)
+const CACHE_PREFIX = "pharmaguide_fast_cache_";
+
+export const getCachedMedication = (query: string, context: string): MedicationInfo | null => {
+  try {
+    const cleanKey = `${CACHE_PREFIX}${query.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}_${(context || "").trim().toLowerCase()}`;
+    const cached = sessionStorage.getItem(cleanKey) || localStorage.getItem(cleanKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {
+    // Ignore storage errors
+  }
+  return null;
+};
+
+export const setCachedMedication = (query: string, context: string, data: MedicationInfo) => {
+  try {
+    const cleanKey = `${CACHE_PREFIX}${query.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}_${(context || "").trim().toLowerCase()}`;
+    const serialized = JSON.stringify(data);
+    sessionStorage.setItem(cleanKey, serialized);
+    localStorage.setItem(cleanKey, serialized);
+  } catch (e) {
+    // Ignore quota errors
+  }
+};
 
 export const setCustomApiKey = (key: string) => {
   const trimmedKey = key.trim();
@@ -63,35 +90,56 @@ const getAI = () => {
   return aiInstance;
 };
 
-// Exécute une opération avec bascule automatique sur les modèles compatibles si un modèle est déprécié ou indisponible (404/503)
+// Exécute une promesse avec un délai maximal (timeout) pour basculer rapidement sans bloquer l'utilisateur
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutMessage)), ms);
+    promise
+      .then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
+// Exécute une opération avec bascule automatique sur les modèles compatibles si un modèle est lent, déprécié ou indisponible (404/503/timeout)
 async function callGeminiWithFallback<T>(
   ai: GoogleGenAI,
-  operation: (model: string) => Promise<T>
+  operation: (model: string) => Promise<T>,
+  timeoutPerModelMs: number = 8500
 ): Promise<T> {
   let lastError: any = null;
   
   for (const model of CANDIDATE_MODELS) {
     try {
-      return await operation(model);
+      return await withTimeout(
+        operation(model),
+        timeoutPerModelMs,
+        `Timeout de réponse (> ${timeoutPerModelMs / 1000}s) sur ${model}`
+      );
     } catch (err: any) {
       lastError = err;
       const msg = String(err?.message || err);
       
-      // Erreur de modèle 404 (non trouvé), modèle déprécié ou réservé : tester le suivant
+      // Erreur de modèle 404 (non trouvé), modèle déprécié, timeout ou surchargé : passer au modèle suivant sans attendre
       if (
         msg.includes("404") ||
         msg.includes("not found") ||
         msg.includes("no longer available") ||
         msg.includes("not supported") ||
-        msg.includes("is no longer available to new users")
+        msg.includes("is no longer available to new users") ||
+        msg.includes("Timeout") ||
+        msg.includes("503") ||
+        msg.includes("UNAVAILABLE") ||
+        msg.includes("high demand") ||
+        msg.includes("RESOURCE_EXHAUSTED") ||
+        msg.includes("429")
       ) {
-        console.warn(`[PharmaGuide] Modèle "${model}" indisponible pour cette clé. Bascule sur le modèle suivant...`);
-        continue;
-      }
-      
-      // En cas de surcharge temporaire du serveur (503/429), tenter le modèle suivant
-      if (msg.includes("503") || msg.includes("UNAVAILABLE") || msg.includes("high demand") || msg.includes("RESOURCE_EXHAUSTED")) {
-        console.warn(`[PharmaGuide] Modèle "${model}" surchargé temporairement. Essai sur le modèle suivant...`);
+        console.warn(`[PharmaGuide] Bascule rapide depuis "${model}" : ${msg.slice(0, 90)}...`);
         continue;
       }
       
@@ -289,13 +337,18 @@ export const identifyMedicationFromImage = async (base64ImageDataUrl: string): P
 };
 
 export const fetchMedicationInfo = async (medicationName: string, userContext: string = ""): Promise<MedicationInfo> => {
-  // 1. Recherche dans la base locale complète pour les médicaments les plus courants
-  const normalizedQuery = medicationName.trim().toLowerCase();
-  for (const [key, data] of Object.entries(LOCAL_MEDICATIONS_DB)) {
-    if (normalizedQuery.includes(key) || key.includes(normalizedQuery)) {
-      console.log(`[PharmaGuide] Données pré-vérifiées trouvées en local pour "${medicationName}".`);
-      return data;
-    }
+  // 1. Recherche instantanée dans la base locale complète et via les alias (0 ms)
+  const localMatch = findLocalMedication(medicationName);
+  if (localMatch) {
+    console.log(`[PharmaGuide] Données pré-vérifiées trouvées instantanément en local pour "${medicationName}".`);
+    return localMatch;
+  }
+
+  // 2. Recherche instantanée dans le cache mémoire / session (0 ms)
+  const cachedMatch = getCachedMedication(medicationName, userContext);
+  if (cachedMatch) {
+    console.log(`[PharmaGuide] Données récupérées instantanément depuis le cache pour "${medicationName}".`);
+    return cachedMatch;
   }
 
   const ai = getAI();
@@ -318,7 +371,7 @@ Points cruciaux à inclure :
     systemInstruction: "Tu es un assistant pharmacien hospitalier et d'officine expert et rigoureux. Tu fournis des données pharmacologiques précises, fiables et à jour en français. Tu portes une attention extrême à la posologie maximale sur 24 heures et aux intervalles minimaux entre chaque prise pour prévenir les surdosages graves."
   };
 
-  return await callGeminiWithFallback(ai, async (model) => {
+  const result = await callGeminiWithFallback(ai, async (model) => {
     try {
       const response = await ai.models.generateContent({
         model,
@@ -369,4 +422,11 @@ Points cruciaux à inclure :
       return sanitizeMedicationInfo(parsed, medicationName);
     }
   });
+
+  // Mise en cache immédiate pour que toute consultation ultérieure soit instantanée
+  if (result) {
+    setCachedMedication(medicationName, userContext, result);
+  }
+
+  return result;
 };

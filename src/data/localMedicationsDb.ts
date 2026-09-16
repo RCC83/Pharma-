@@ -476,5 +476,275 @@ export const LOCAL_MEDICATIONS_DB: Record<string, MedicationInfo> = {
     alternatives: ["Tiorfan (Racécadotril)", "Smecta (Diosmectite)"],
     warningLevel: "low",
     usageTips: "Boire abondamment des boissons salées et sucrées pour compenser les pertes en eau et électrolytes."
+  },
+  "smecta": {
+    name: "Smecta (Diosmectite)",
+    description: "Pansement digestif naturel à base d'argile purifiée protégeant la muqueuse gastro-intestinale.",
+    indications: ["Traitement symptomatique de la diarrhée aiguë chez l'adulte et l'enfant", "Douleurs liées aux affections œsogastroduodénales et coliques"],
+    maxDailyDosage: {
+      generalMax: "6 sachets par jour chez l'adulte en début d'épisode aigu",
+      byIndication: [
+        {
+          indication: "Diarrhée aiguë chez l'adulte",
+          maxDaily: "6 sachets / 24h pendant les premiers jours (puis 3 sachets / 24h)",
+          frequencyOrInterval: "1 sachet délayé dans un demi-verre d'eau, 3 fois par jour (jusqu'à 6)",
+          notes: "Prendre à distance des repas et des autres médicaments."
+        },
+        {
+          indication: "Enfant à partir de 2 ans",
+          maxDaily: "4 sachets par jour pendant 3 jours max",
+          frequencyOrInterval: "Répartir dans un biberon ou compote",
+          notes: "Contre-indiqué chez les nourrissons et enfants de moins de 2 ans (traces potentielles de plomb naturel)."
+        }
+      ],
+      safetyWarning: "ESPACEMENT OBLIGATOIRE : Le Smecta absorbe les autres médicaments et annule leur effet. Prendre tout autre médicament 2 heures avant ou 2 heures après le Smecta."
+    },
+    contraindications: ["Nourrissons et enfants de moins de 2 ans", "Femmes enceintes ou allaitantes (par mesure de précaution)", "Allergie à la diosmectite"],
+    interactions: ["Diminue considérablement l'absorption de TOUS les autres médicaments pris simultanément"],
+    alternatives: ["Tiorfan (Racécadotril)", "Imodium (Lopéramide)"],
+    warningLevel: "low",
+    usageTips: "Espacer la prise de tout autre médicament d'au moins 2 heures."
+  },
+  "gaviscon": {
+    name: "Gaviscon (Alginate de sodium / Bicarbonate de sodium)",
+    description: "Anti-reflux gastro-œsophagien formant une barrière protectrice flottant sur le contenu de l'estomac.",
+    indications: ["Brûlures d'estomac", "Remontées acides (RGO)", "Pyrosis et aigreurs"],
+    maxDailyDosage: {
+      generalMax: "8 sachets ou 16 cuillères à café (80 ml) par 24h chez l'adulte",
+      byIndication: [
+        {
+          indication: "Brûlures d'estomac et reflux après les repas",
+          maxDaily: "4 prises par jour (max 8 sachets)",
+          frequencyOrInterval: "1 sachet après les 3 repas principaux et 1 sachet au coucher",
+          notes: "Prendre immédiatement après les repas."
+        }
+      ],
+      safetyWarning: "Teneur élevée en sodium (sel) : vigilance chez les personnes suivant un régime sans sel ou souffrant d'insuffisance cardiaque sévère."
+    },
+    contraindications: ["Allergie connue aux principes actifs"],
+    interactions: ["Espacer d'au moins 2 heures la prise d'antibiotiques (fluoroquinolones, tétracyclines) et de fer"],
+    alternatives: ["Rennie", "Maalox", "Inexium / Oméprazole"],
+    warningLevel: "low",
+    usageTips: "Bien malaxer le sachet avant ouverture. Prendre après les repas et au coucher."
+  },
+  "augmentin": {
+    name: "Augmentin (Amoxicilline / Acide clavulanique)",
+    description: "Antibiotique à large spectre associant une pénicilline à un inhibiteur de bêta-lactamases pour surmonter les résistances bactériennes.",
+    indications: ["Infections ORL (otites moyennes aiguës, sinusites)", "Infections respiratoires (bronchites, pneumonies)", "Infections urinaires et dentaires complexes"],
+    maxDailyDosage: {
+      generalMax: "3 g d'amoxicilline par 24h chez l'adulte",
+      byIndication: [
+        {
+          indication: "Infections courantes chez l'adulte (> 40 kg)",
+          maxDaily: "2 à 3 g d'amoxicilline / jour (soit 2 à 3 comprimés 1g/125mg par 24h)",
+          frequencyOrInterval: "1 comprimé matin et soir (ou matin, midi et soir) au début des repas",
+          notes: "Toujours terminer la durée prescrite même si les symptômes disparaissent."
+        }
+      ],
+      safetyWarning: "RISQUE D'HÉPATITE MÉDICAMENTEUSE ET D'ALLERGIE GRAVE : Prendre impérativement au début d'un repas pour réduire les intolérances digestives et diarrhées. Interdit en cas d'antécédent de jaunisse liée à l'amoxicilline."
+    },
+    contraindications: ["Allergie aux pénicillines ou céphalosporines", "Antécédent d'ictère ou d'hépatite liée à l'amoxicilline/acide clavulanique"],
+    interactions: ["Méthotrexate (toxicité accrue)", "Anticoagulants oraux (contrôle INR nécessaire)"],
+    alternatives: ["Josamycine ou Clarithromycine (macrolides) en cas d'allergie avérée à la pénicilline"],
+    warningLevel: "high",
+    usageTips: "À prendre impérativement au début des repas pour une meilleure tolérance digestive."
+  },
+  "solupred": {
+    name: "Solupred (Prednisolone)",
+    description: "Corticoïde de synthèse puissant anti-inflammatoire et immunosuppresseur.",
+    indications: ["Affections inflammatoires sévères (ORL, pulmonaires, rhumatologiques)", "Crises d'asthme aiguës", "Réactions allergiques sévères"],
+    maxDailyDosage: {
+      generalMax: "Variable selon prescription stricte (usuellement 0,5 à 1 mg/kg/jour en cure courte)",
+      byIndication: [
+        {
+          indication: "Traitement d'attaque court (3 à 7 jours)",
+          maxDaily: "40 mg à 60 mg par 24h chez l'adulte",
+          frequencyOrInterval: "Prise unique le matin au cours du petit-déjeuner",
+          notes: "Ne pas prolonger sans avis médical."
+        }
+      ],
+      safetyWarning: "NE JAMAIS PRENDRE EN CAS D'INFECTION NON CONTRÔLÉE : La cortisone diminue les défenses immunitaires. Prendre toujours le matin pour respecter le rythme hormonal naturel et éviter l'insomnie."
+    },
+    contraindications: ["Infections virales en évolution (hépatite, herpès, varicelle)", "États infectieux non contrôlés", "Psychose non contrôlée"],
+    interactions: ["Vaccins vivants atténués (formellement contre-indiqués)", "Médicaments torsadogènes", "AINS (risque majeur d'ulcère gastrique)"],
+    alternatives: ["Célestène (Bétaméthasone)", "Cortancyl (Prednisone)"],
+    warningLevel: "high",
+    usageTips: "Prendre impérativement le matin au cours du petit-déjeuner pour éviter les insomnies et l'irritation de l'estomac."
+  },
+  "tramadol": {
+    name: "Tramadol (Topalgic, Ixprim, Contramal)",
+    description: "Antalgique opioïde de palier 2 agissant sur le système nerveux central pour soulager les douleurs modérées à intenses.",
+    indications: ["Douleurs aiguës ou chroniques modérées à intenses ne répondant pas aux antalgiques de palier 1"],
+    maxDailyDosage: {
+      generalMax: "400 mg par 24 heures chez l'adulte (max 300 mg chez le sujet âgé)",
+      byIndication: [
+        {
+          indication: "Douleur aiguë chez l'adulte",
+          maxDaily: "400 mg / 24h",
+          frequencyOrInterval: "50 à 100 mg par prise, espacer de 4 à 6 heures minimum",
+          notes: "Arrêt progressif recommandé pour éviter le syndrome de sevrage."
+        }
+      ],
+      safetyWarning: "RISQUE MAJEUR D'ADDICTION, DE DÉPENDANCE ET DE DÉPRESSION RESPIRATOIRE : Ne jamais combiner avec de l'alcool ou d'autres dépresseurs du système nerveux. Respecter la durée maximale prescrite (12 semaines)."
+    },
+    contraindications: ["Insuffisance respiratoire sévère", "Épilepsie non contrôlée", "Association avec les IMAO", "Enfant de moins de 15 ans", "Allaitement"],
+    interactions: ["Antidépresseurs sérotoninergiques (risque de syndrome sérotoninergique mortel)", "Alcool et benzodiazépines (risque de coma et décès)"],
+    alternatives: ["Paracétamol codéiné", "Lamaline"],
+    warningLevel: "high",
+    usageTips: "Ne pas conduire de véhicule en début de traitement. Arrêter progressivement les doses."
+  },
+  "aerius": {
+    name: "Aerius (Desloratadine)",
+    description: "Antihistaminique H1 non sédatif de dernière génération pour le traitement des allergies.",
+    indications: ["Rhinite allergique saisonnière ou perannuelle (rhume des foins)", "Urticaire chronique idiopathique"],
+    maxDailyDosage: {
+      generalMax: "5 mg (1 comprimé) par 24 heures chez l'adulte et l'enfant > 12 ans",
+      byIndication: [
+        {
+          indication: "Rhinite allergique et urticaire chez l'adulte",
+          maxDaily: "5 mg (1 comprimé) par jour",
+          frequencyOrInterval: "1 prise unique quotidienne avec ou sans repas",
+          notes: "Inutile et sans bénéfice de doubler la dose."
+        }
+      ],
+      safetyWarning: "Respecter la dose d'un seul comprimé par jour. Bien que non sédatif, une somnolence paradoxale peut survenir chez certaines personnes sensibles."
+    },
+    contraindications: ["Allergie à la desloratadine ou à la loratadine", "Insuffisance rénale sévère (adapter la posologie)"],
+    interactions: ["Alcool (potentialisation modérée de la somnolence)"],
+    alternatives: ["Cétirizine (Zyrtec)", "Lévocétirizine (Xyzall)", "Loratadine (Clarityne)"],
+    warningLevel: "low",
+    usageTips: "Peut être pris à tout moment de la journée, avec ou sans aliments."
   }
 };
+
+// Table de correspondance d'alias et noms génériques pour accès instantané (0 ms)
+export const MEDICATION_ALIASES: Record<string, string> = {
+  // Paracétamol & marques
+  "paracetamol": "doliprane",
+  "paracétamol": "doliprane",
+  "doli": "doliprane",
+  "doliprane": "doliprane",
+  "dafalgan": "dafalgan",
+  "efferalgan": "efferalgan",
+  "perfalgan": "doliprane",
+
+  // Ibuprofène & marques
+  "ibuprofene": "advil",
+  "ibuprofène": "advil",
+  "advil": "advil",
+  "nurofen": "nurofen",
+  "antarene": "advil",
+  "antarène": "advil",
+
+  // Spasfon
+  "spasfon": "spasfon",
+  "phloroglucinol": "spasfon",
+
+  // Amoxicilline
+  "amoxicilline": "amoxicilline",
+  "amox": "amoxicilline",
+  "clamoxyl": "amoxicilline",
+
+  // Augmentin
+  "augmentin": "augmentin",
+  "amoxicilline acide clavulanique": "augmentin",
+
+  // Ventoline
+  "ventoline": "ventoline",
+  "salbutamol": "ventoline",
+  "bricanyl": "ventoline",
+
+  // Aspirine
+  "aspirine": "aspirine",
+  "aspegic": "aspirine",
+  "aspégic": "aspirine",
+  "kardegic": "aspirine",
+  "kardégic": "aspirine",
+  "acide acetylsalicylique": "aspirine",
+  "acide acétylsalicylique": "aspirine",
+
+  // Inexium / IPP
+  "inexium": "inexium",
+  "esomeprazole": "inexium",
+  "ésoméprazole": "inexium",
+  "mopral": "inexium",
+  "omeprazole": "inexium",
+  "oméprazole": "inexium",
+
+  // Imodium / Transit
+  "imodium": "imodium",
+  "loperamide": "imodium",
+  "lopéramide": "imodium",
+
+  // Smecta
+  "smecta": "smecta",
+  "diosmectite": "smecta",
+
+  // Gaviscon
+  "gaviscon": "gaviscon",
+  "alginate": "gaviscon",
+
+  // Solupred / Corticoïdes
+  "solupred": "solupred",
+  "prednisolone": "solupred",
+  "cortisone": "solupred",
+  "cortancyl": "solupred",
+  "celestene": "solupred",
+  "célestène": "solupred",
+
+  // Tramadol
+  "tramadol": "tramadol",
+  "topalgic": "tramadol",
+  "ixprim": "tramadol",
+  "contramal": "tramadol",
+
+  // Allergies
+  "aerius": "aerius",
+  "desloratadine": "aerius",
+  "zyrtec": "aerius",
+  "cetirizine": "aerius",
+  "cétirizine": "aerius"
+};
+
+/**
+ * Recherche instantanée ultra-rapide en local (0 ms)
+ */
+export function findLocalMedication(rawQuery: string): MedicationInfo | null {
+  if (!rawQuery) return null;
+  const clean = rawQuery
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, " ")
+    .trim();
+
+  if (!clean) return null;
+
+  // 1. Alias direct sur toute la chaîne
+  if (MEDICATION_ALIASES[clean] && LOCAL_MEDICATIONS_DB[MEDICATION_ALIASES[clean]]) {
+    return LOCAL_MEDICATIONS_DB[MEDICATION_ALIASES[clean]];
+  }
+
+  // 2. Recherche par mot-clé (ex: "doliprane 1000mg" -> mot "doliprane")
+  const tokens = clean.split(/\s+/).filter(t => t.length >= 3);
+  for (const token of tokens) {
+    if (MEDICATION_ALIASES[token] && LOCAL_MEDICATIONS_DB[MEDICATION_ALIASES[token]]) {
+      return LOCAL_MEDICATIONS_DB[MEDICATION_ALIASES[token]];
+    }
+  }
+
+  // 3. Clé directe dans LOCAL_MEDICATIONS_DB
+  for (const [key, data] of Object.entries(LOCAL_MEDICATIONS_DB)) {
+    const cleanKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (clean.includes(cleanKey) || cleanKey.includes(clean)) {
+      return data;
+    }
+    for (const token of tokens) {
+      if (cleanKey.includes(token) || token.includes(cleanKey)) {
+        return data;
+      }
+    }
+  }
+
+  return null;
+}
