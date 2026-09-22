@@ -64,10 +64,13 @@ export const generatePharmacyPDF = (
     month: "long",
     day: "numeric"
   });
+  const countRegular = medications.filter(m => !m.isReserve).length;
+  const countReserve = medications.filter(m => m.isReserve).length;
+
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
   doc.text(`Édité le : ${dateStr}`, pageWidth - margin - 5, y + 9, { align: "right" });
-  doc.text(`Traitements suivis : ${medications.length}`, pageWidth - margin - 5, y + 16, { align: "right" });
+  doc.text(`Total : ${medications.length} (${countRegular} réguliers, ${countReserve} en réserve)`, pageWidth - margin - 5, y + 16, { align: "right" });
 
   y += 29;
 
@@ -126,6 +129,19 @@ export const generatePharmacyPDF = (
       doc.setFontSize(11);
       doc.setTextColor(29, 78, 216); // blue-700
       doc.text(`${index + 1}. ${med.name}`, margin + 3, y + 5);
+
+      const nameWidth = doc.getTextWidth(`${index + 1}. ${med.name}`);
+      if (med.isReserve) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(180, 83, 9); // amber-700
+        doc.text("[EN RÉSERVE / SI BESOIN]", margin + 3 + nameWidth + 3, y + 4.8);
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139); // slate-500
+        doc.text("[Traitement régulier]", margin + 3 + nameWidth + 3, y + 4.8);
+      }
 
       // Niveau d'attention
       let levelText = "Vigilance standard";

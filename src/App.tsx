@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SearchState, MedicationInfo } from './types';
-import { 
-  fetchMedicationInfo, 
-  setCustomApiKey, 
-  getStoredApiKey, 
-  getEffectiveApiKey,
-  testApiKeyValidity 
-} from './services/geminiService';
+import { fetchMedicationInfo } from './services/geminiService';
 import { SearchBar } from './components/SearchBar';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { SectionCard } from './components/SectionCard';
@@ -34,16 +28,14 @@ import {
   LifeBuoy,
   Stethoscope,
   Download,
-  KeyRound,
   ExternalLink,
-  Key,
   RefreshCw,
-  Eye,
-  EyeOff,
   Database,
   ShieldCheck,
   HardDrive,
-  FileText
+  FileText,
+  Package,
+  Calendar
 } from 'lucide-react';
 import {
   syncAndMigrateLocalStorageToIndexedDB,
@@ -75,13 +67,8 @@ const App: React.FC = () => {
   });
   const [showPharmacy, setShowPharmacy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [customApiKeyInput, setCustomApiKeyInput] = useState<string>(() => getStoredApiKey());
-  const [showKeyVisible, setShowKeyVisible] = useState<boolean>(false);
-  const [hasEffectiveKey, setHasEffectiveKey] = useState<boolean>(() => !!getEffectiveApiKey());
-  const [isTestingKey, setIsTestingKey] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [pharmacyTab, setPharmacyTab] = useState<'all' | 'regular' | 'reserve'>('all');
   
   const [userContext, setUserContext] = useState<string>(() => {
     console.log("PharmaGuide: Initializing userContext...");
@@ -159,16 +146,12 @@ const App: React.FC = () => {
       // Extraction et interprétation conviviale des erreurs (503, 429, API Key, etc.)
       const rawError = typeof err === 'string' ? err : (err?.message || JSON.stringify(err));
       
-      if (rawError.includes("permission denied") || rawError.includes("PERMISSION_DENIED") || rawError.includes("Forbidden") || rawError.includes("403")) {
-        errorMessage = "Accès refusé par Google Gemini (Permission Denied). Votre clé API Google AI Studio est soit restreinte (restrictions d'IP/domaine ou d'API dans Google Cloud), soit non autorisée pour le modèle Gemini. Veuillez vous assurer que la clé est créée sur aistudio.google.com SANS restriction d'application/IP dans Google Cloud Console.";
+      if (rawError.includes("leaked") || rawError.includes("fuité") || rawError.includes("publique") || rawError.includes("révoquée") || rawError.includes("permission denied") || rawError.includes("PERMISSION_DENIED") || rawError.includes("Forbidden") || rawError.includes("403") || rawError.includes("api key") || rawError.includes("API_KEY") || rawError.includes("non configurée")) {
+        errorMessage = "Service de recherche en ligne temporairement indisponible. Veuillez vérifier votre connexion ou réessayer ultérieurement.";
       } else if (rawError.includes("503") || rawError.includes("high demand") || rawError.includes("UNAVAILABLE")) {
-        errorMessage = "Les serveurs de l'IA connaissent actuellement une très forte affluence temporaire. Veuillez patienter quelques secondes et relancer la recherche.";
+        errorMessage = "Les serveurs de recherche connaissent actuellement une forte affluence. Veuillez patienter quelques secondes et relancer.";
       } else if (rawError.includes("429") || rawError.includes("RESOURCE_EXHAUSTED")) {
-        errorMessage = "Limite de requêtes temporairement atteinte. Veuillez patienter une trentaine de secondes avant de réessayer.";
-      } else if (rawError.includes("API_KEY_INVALID")) {
-        errorMessage = "La clé API n'est pas valide. Veuillez la vérifier dans les paramètres.";
-      } else if (rawError.includes("api key must be set") || rawError.includes("non configurée")) {
-        errorMessage = "La clé API Gemini n'est pas configurée. Veuillez renseigner votre clé API dans les paramètres.";
+        errorMessage = "Limite temporaire de requêtes atteinte. Veuillez patienter une trentaine de secondes avant de réessayer.";
       } else if (rawError.startsWith("{") && rawError.endsWith("}")) {
         try {
           const parsed = JSON.parse(rawError);
@@ -215,21 +198,99 @@ const App: React.FC = () => {
     }
   };
 
-  const addToPatientList = async () => {
+  const addToPatientList = async (asReserve: boolean = false) => {
     if (!state.data) return;
-    const target = state.data;
-    if (patientMedications.some(m => m.name.toLowerCase() === target.name.toLowerCase())) {
-      toast.info(`${target.name} est déjà dans votre pharmacie.`);
+    const target: MedicationInfo = {
+      ...state.data,
+      isReserve: asReserve
+    };
+    
+    const existingIndex = patientMedications.findIndex(
+      m => m.name.toLowerCase() === target.name.toLowerCase()
+    );
+
+    if (existingIndex >= 0) {
+      const updated = [...patientMedications];
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        isReserve: asReserve
+      };
+      setPatientMedications(updated);
+      setState(prev => prev.data ? { ...prev, data: { ...prev.data, isReserve: asReserve } } : prev);
+      try {
+        await saveMedicationToDB(updated[existingIndex]);
+        toast.success(
+          asReserve 
+            ? `${target.name} placé dans vos médicaments en réserve.`
+            : `${target.name} placé dans vos traitements réguliers.`
+        );
+      } catch {
+        toast.success(`${target.name} mis à jour.`);
+      }
       return;
     }
+
     setPatientMedications(prev => [target, ...prev]);
+    setState(prev => prev.data ? { ...prev, data: { ...prev.data, isReserve: asReserve } } : prev);
     try {
       await saveMedicationToDB(target);
-      toast.success(`${target.name} synchronisé dans votre pharmacie !`, {
-        description: "Enregistré de manière permanente dans IndexedDB locale"
-      });
+      toast.success(
+        asReserve
+          ? `${target.name} ajouté en réserve (si besoin / secours) !`
+          : `${target.name} synchronisé dans votre pharmacie !`,
+        {
+          description: asReserve
+            ? "Classé dans votre réserve pour prises ponctuelles ou secours."
+            : "Enregistré de manière permanente dans IndexedDB locale"
+        }
+      );
     } catch {
       toast.success(`${target.name} ajouté à votre pharmacie !`);
+    }
+  };
+
+  const toggleMedicationReserve = async (e: React.MouseEvent, medName: string) => {
+    e.stopPropagation();
+    const medIndex = patientMedications.findIndex(
+      m => m.name.toLowerCase() === medName.toLowerCase()
+    );
+    if (medIndex === -1) {
+      // If not yet in list, add it as reserve
+      if (state.data && state.data.name.toLowerCase() === medName.toLowerCase()) {
+        await addToPatientList(true);
+      }
+      return;
+    }
+
+    const currentMed = patientMedications[medIndex];
+    const newReserveStatus = !currentMed.isReserve;
+    const updatedMed: MedicationInfo = {
+      ...currentMed,
+      isReserve: newReserveStatus
+    };
+
+    const updatedList = [...patientMedications];
+    updatedList[medIndex] = updatedMed;
+    setPatientMedications(updatedList);
+
+    if (state.data && state.data.name.toLowerCase() === medName.toLowerCase()) {
+      setState(prev => prev.data ? { ...prev, data: { ...prev.data, isReserve: newReserveStatus } } : prev);
+    }
+
+    try {
+      await saveMedicationToDB(updatedMed);
+      toast.success(
+        newReserveStatus
+          ? `${currentMed.name} placé en réserve (si besoin / secours)`
+          : `${currentMed.name} placé en traitement régulier`,
+        {
+          description: newReserveStatus 
+            ? "Ce traitement est identifié pour un usage ponctuel ou d'urgence." 
+            : "Ce traitement est identifié comme traitement habituel au quotidien."
+        }
+      );
+    } catch {
+      toast.success(`${currentMed.name} mis à jour.`);
     }
   };
 
@@ -273,7 +334,7 @@ const App: React.FC = () => {
     
     if (patientMedications.length > 0) {
       patientMedications.forEach((med, i) => {
-        text += `${i + 1}. ${med.name.toUpperCase()}\n`;
+        text += `${i + 1}. ${med.name.toUpperCase()} [${med.isReserve ? 'EN RÉSERVE / SI BESOIN' : 'TRAITEMENT RÉGULIER'}]\n`;
         text += `   - Niveau d'alerte : ${med.warningLevel === 'high' ? 'Élevé' : med.warningLevel === 'medium' ? 'Modéré' : 'Faible'}\n`;
         if (med.maxDailyDosage?.generalMax) {
           text += `   - Dosage max / 24h : ${med.maxDailyDosage.generalMax}\n`;
@@ -306,58 +367,25 @@ const App: React.FC = () => {
   };
 
   const isAlreadyInList = state.data && patientMedications.some(m => m.name.toLowerCase() === state.data!.name.toLowerCase());
+  const savedMedData = state.data ? patientMedications.find(m => m.name.toLowerCase() === state.data!.name.toLowerCase()) : null;
+  const isCurrentMedInReserve = Boolean(savedMedData?.isReserve ?? state.data?.isReserve);
+
+  const regularMeds = patientMedications.filter(m => !m.isReserve);
+  const reserveMeds = patientMedications.filter(m => m.isReserve);
+  const displayedMeds = pharmacyTab === 'regular' 
+    ? regularMeds 
+    : pharmacyTab === 'reserve' 
+      ? reserveMeds 
+      : patientMedications;
 
   const togglePharmacy = () => {
     setShowPharmacy(!showPharmacy);
     setShowInfo(false);
-    setShowApiKeyModal(false);
   };
 
   const toggleInfo = () => {
     setShowInfo(!showInfo);
     setShowPharmacy(false);
-    setShowApiKeyModal(false);
-  };
-
-  const toggleApiKeyModal = () => {
-    setShowApiKeyModal(!showApiKeyModal);
-    setShowPharmacy(false);
-    setShowInfo(false);
-  };
-
-  const handleSaveApiKey = () => {
-    setCustomApiKey(customApiKeyInput);
-    const effective = getEffectiveApiKey();
-    setHasEffectiveKey(!!effective);
-    setTestResult(null);
-    if (customApiKeyInput.trim()) {
-      toast.success("Clé API Gemini personnalisée enregistrée !");
-    } else {
-      toast.info("Clé API personnalisée effacée.");
-    }
-  };
-
-  const handleTestKey = async () => {
-    const keyToTest = customApiKeyInput.trim() || getEffectiveApiKey();
-    if (!keyToTest) {
-      toast.error("Veuillez d'abord coller ou enregistrer une clé API.");
-      return;
-    }
-    setIsTestingKey(true);
-    setTestResult(null);
-    try {
-      const res = await testApiKeyValidity(keyToTest);
-      setTestResult(res);
-      if (res.success) {
-        toast.success(res.message);
-      } else {
-        toast.error(res.message);
-      }
-    } catch (e: any) {
-      setTestResult({ success: false, message: e?.message || "Erreur inconnue." });
-    } finally {
-      setIsTestingKey(false);
-    }
   };
 
   return (
@@ -481,7 +509,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Mes Médicaments */}
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                       <Pill className="w-3.5 h-3.5 text-blue-600" /> Mes Médicaments ({patientMedications.length})
@@ -492,39 +520,113 @@ const App: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  {patientMedications.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2">
-                      {patientMedications.map((med, idx) => (
-                        <div 
-                          key={idx}
-                          onClick={() => selectFromList(med)}
-                          className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50/80 border border-slate-100 rounded-xl cursor-pointer transition-all group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${med.warningLevel === 'high' ? 'bg-red-500' : med.warningLevel === 'medium' ? 'bg-orange-500' : 'bg-emerald-500'}`} />
-                            <div>
-                              <span className="text-sm font-semibold text-slate-700 block">{med.name}</span>
-                              {med.maxDailyDosage?.generalMax && (
-                                <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50 font-medium inline-block mt-0.5">
-                                  Max : {med.maxDailyDosage.generalMax}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <button 
-                            onClick={(e) => removeFromPatientList(e, med.name)}
-                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            title="Retirer de ma pharmacie"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
+
+                  {patientMedications.length > 0 && (
+                    <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/60">
+                      <button
+                        type="button"
+                        onClick={() => setPharmacyTab('all')}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-center ${
+                          pharmacyTab === 'all'
+                            ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Tous ({patientMedications.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPharmacyTab('regular')}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 ${
+                          pharmacyTab === 'regular'
+                            ? 'bg-white text-blue-700 shadow-2xs font-bold'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Calendar className="w-3 h-3 text-blue-600" />
+                        <span>Réguliers ({regularMeds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPharmacyTab('reserve')}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 ${
+                          pharmacyTab === 'reserve'
+                            ? 'bg-white text-amber-700 shadow-2xs font-bold'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Package className="w-3 h-3 text-amber-600" />
+                        <span>En réserve ({reserveMeds.length})</span>
+                      </button>
                     </div>
+                  )}
+
+                  {patientMedications.length > 0 ? (
+                    displayedMeds.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-2">
+                        {displayedMeds.map((med, idx) => (
+                          <div 
+                            key={idx}
+                            onClick={() => selectFromList(med)}
+                            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50/80 border border-slate-100 rounded-xl cursor-pointer transition-all group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${med.warningLevel === 'high' ? 'bg-red-500' : med.warningLevel === 'medium' ? 'bg-orange-500' : 'bg-emerald-500'}`} />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-slate-800">{med.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  {med.maxDailyDosage?.generalMax && (
+                                    <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50 font-medium inline-block">
+                                      Max : {med.maxDailyDosage.generalMax}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => toggleMedicationReserve(e, med.name)}
+                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 transition-all ${
+                                      med.isReserve
+                                        ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                                        : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                    }`}
+                                    title={med.isReserve ? "Médicament de réserve (si besoin / secours). Cliquer pour basculer en régulier." : "Traitement habituel. Cliquer pour mettre en réserve."}
+                                  >
+                                    <Package className={`w-3 h-3 ${med.isReserve ? 'text-amber-700' : 'text-slate-400'}`} />
+                                    <span>{med.isReserve ? 'En réserve' : 'Régulier'}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={(e) => removeFromPatientList(e, med.name)}
+                              className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              title="Retirer de ma pharmacie"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-400 text-center py-5 italic border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                        {pharmacyTab === 'reserve' ? (
+                          <>
+                            <p className="font-semibold text-slate-600 not-italic">Aucun médicament en réserve</p>
+                            <p className="text-[10px] text-slate-400 mt-1 not-italic">Cliquez sur « Régulier » pour basculer un médicament en réserve, ou ajoutez-en un avec l'option « En réserve ».</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-slate-600 not-italic">Aucun traitement régulier</p>
+                            <p className="text-[10px] text-slate-400 mt-1 not-italic">Tous vos médicaments enregistrés sont actuellement classés en réserve.</p>
+                          </>
+                        )}
+                      </div>
+                    )
                   ) : (
                     <div className="text-xs text-slate-400 text-center py-6 italic border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
                       <p>Aucun médicament enregistré.</p>
-                      <p className="text-[10px] text-slate-400 mt-1 not-italic">Recherchez un médicament et cliquez sur « Ajouter à ma pharmacie ».</p>
+                      <p className="text-[10px] text-slate-400 mt-1 not-italic">Recherchez un médicament et cliquez sur « Suivre » ou « En réserve ».</p>
                     </div>
                   )}
                 </div>
@@ -591,126 +693,6 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
-
-          {showApiKeyModal && (
-            <div className="absolute top-full left-0 w-full bg-white border-b border-slate-200 shadow-2xl z-40 animate-fade-in-up max-h-[80vh] overflow-y-auto no-scrollbar">
-              <div className="p-5 space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
-                      <KeyRound className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-800 uppercase tracking-tight">Configuration Clé API Gemini</h3>
-                      <p className="text-[11px] text-slate-500">Pour Vercel, Netlify, PWA & Antigravity</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setShowApiKeyModal(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* API Key Status */}
-                <div className={`p-3.5 rounded-xl text-xs flex items-center gap-3 border ${hasEffectiveKey ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${hasEffectiveKey ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-                  <span className="font-medium">
-                    {hasEffectiveKey 
-                      ? "✓ Clé API Gemini active et opérationnelle." 
-                      : "⚠️ Aucune clé API active détectée. Veuillez en saisir une ci-dessous ou la configurer sur Vercel."}
-                  </span>
-                </div>
-
-                {/* Direct Key Entry */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">Clé API Gemini (masquée) :</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input 
-                        type={showKeyVisible ? "text" : "password"}
-                        value={customApiKeyInput}
-                        onChange={(e) => {
-                          setCustomApiKeyInput(e.target.value);
-                          setTestResult(null);
-                        }}
-                        placeholder="••••••••••••••••••••••••"
-                        autoComplete="off"
-                        spellCheck="false"
-                        className="w-full p-2.5 pr-9 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowKeyVisible(!showKeyVisible)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
-                        title={showKeyVisible ? "Masquer la clé" : "Afficher la clé"}
-                      >
-                        {showKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <button 
-                      onClick={handleSaveApiKey}
-                      className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 shrink-0"
-                    >
-                      Enregistrer
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between pt-1">
-                    <p className="text-[10px] text-slate-400">Stockée localement et masquée à l'écran.</p>
-                    <button
-                      onClick={handleTestKey}
-                      disabled={isTestingKey || (!customApiKeyInput && !hasEffectiveKey)}
-                      className="px-3 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isTestingKey ? 'animate-spin' : ''}`} />
-                      {isTestingKey ? 'Test en cours...' : 'Tester la clé'}
-                    </button>
-                  </div>
-
-                  {testResult && (
-                    <div className={`mt-2 p-2.5 rounded-xl text-xs flex items-start gap-2 border ${testResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
-                      {testResult.success ? (
-                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      ) : (
-                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                      )}
-                      <div>
-                        <p className="font-semibold">{testResult.success ? 'Clé validée avec succès !' : 'Échec du test de la clé :'}</p>
-                        <p className="text-[11px] mt-0.5 leading-relaxed">{testResult.message}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Vercel Deployment Instructions */}
-                <div className="pt-3 border-t border-slate-100 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" /> Guide de déploiement sur Vercel
-                  </h4>
-                  <ol className="space-y-2 text-xs text-slate-600 list-decimal list-inside bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                    <li className="leading-relaxed">
-                      Obtenez une clé API gratuite sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold">Google AI Studio</a>.
-                    </li>
-                    <li className="leading-relaxed">
-                      Dans votre projet Vercel, allez dans <strong>Settings &gt; Environment Variables</strong>.
-                    </li>
-                    <li className="leading-relaxed">
-                      Ajoutez le nom : <code className="bg-white px-1.5 py-0.5 border rounded text-[11px] font-mono text-blue-700">VITE_GEMINI_API_KEY</code> et collez votre clé.
-                    </li>
-                    <li className="leading-relaxed">
-                      Cliquez sur <strong>Redeploy</strong> dans Vercel pour recompiler avec la clé.
-                    </li>
-                  </ol>
-                </div>
-
-                <button 
-                  onClick={() => setShowApiKeyModal(false)}
-                  className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-slate-200 transition-all"
-                >
-                  Fermer
-                </button>
-              </div>
-            </div>
-          )}
         </header>
 
         <main id="main-scroll" className="flex-grow w-full px-5 py-6 overflow-y-auto no-scrollbar pb-10">
@@ -749,20 +731,6 @@ const App: React.FC = () => {
                     Réessayer la recherche
                   </button>
                 )}
-
-                {(state.error.includes("Clé API") || state.error.includes("api key") || state.error.includes("Vercel") || state.error.includes("configurée") || state.error.includes("Permission") || state.error.includes("refusé")) && (
-                  <button 
-                    onClick={() => {
-                      setShowApiKeyModal(true);
-                      setShowPharmacy(false);
-                      setShowInfo(false);
-                    }}
-                    className="py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
-                  >
-                    <KeyRound className="w-3.5 h-3.5" />
-                    Changer la clé API
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -771,29 +739,85 @@ const App: React.FC = () => {
             <div className="space-y-5 pb-6">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 animate-fade-in-up">
                 <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex flex-col gap-1.5">
                       <h2 className="text-2xl font-bold text-slate-900 capitalize">{state.data.name}</h2>
-                      <AlertBadge level={state.data.warningLevel} />
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={handleShare} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl border border-slate-100 shadow-sm transition-all"><Share2 className="w-5 h-5" /></button>
-                      <button 
-                        onClick={addToPatientList} 
-                        className={`p-2.5 rounded-xl border shadow-sm transition-all flex items-center gap-2 ${isAlreadyInList ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                      >
-                        {isAlreadyInList ? (
-                          <>
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="text-xs font-bold uppercase hidden sm:inline">Suivi</span>
-                          </>
-                        ) : (
-                          <>
-                            <PlusCircle className="w-5 h-5" />
-                            <span className="text-xs font-bold uppercase hidden sm:inline">Suivre</span>
-                          </>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <AlertBadge level={state.data.warningLevel} />
+                        {isAlreadyInList && (
+                          isCurrentMedInReserve ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                              <Package className="w-3 h-3 text-amber-700" />
+                              En réserve (si besoin)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                              <Calendar className="w-3 h-3 text-blue-600" />
+                              Traitement régulier
+                            </span>
+                          )
                         )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button 
+                        onClick={handleShare} 
+                        className="p-2 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl border border-slate-100 shadow-sm transition-all"
+                        title="Partager"
+                      >
+                        <Share2 className="w-4 h-4" />
                       </button>
+
+                      {isAlreadyInList ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleMedicationReserve(e, state.data!.name)}
+                            className={`py-2 px-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs ${
+                              isCurrentMedInReserve
+                                ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                            }`}
+                            title={isCurrentMedInReserve ? "Actuellement classé en réserve (si besoin / secours). Cliquer pour passer en régulier." : "Cliquer pour mettre ce médicament en réserve."}
+                          >
+                            <Package className={`w-3.5 h-3.5 ${isCurrentMedInReserve ? 'text-amber-700' : 'text-slate-400'}`} />
+                            <span>{isCurrentMedInReserve ? 'En réserve' : 'En réserve ?'}</span>
+                          </button>
+
+                          <button 
+                            type="button"
+                            onClick={() => addToPatientList(false)}
+                            className="p-2 px-2.5 rounded-xl border shadow-sm transition-all flex items-center gap-1 bg-emerald-50 text-emerald-700 border-emerald-200"
+                            title="Traitement enregistré dans votre pharmacie"
+                          >
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs font-bold uppercase hidden sm:inline">Suivi</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <button 
+                            type="button"
+                            onClick={() => addToPatientList(true)}
+                            className="py-2 px-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
+                            title="Ajouter directement comme médicament en réserve (si besoin / secours)"
+                          >
+                            <Package className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Réserve</span>
+                          </button>
+
+                          <button 
+                            type="button"
+                            onClick={() => addToPatientList(false)} 
+                            className="py-2 px-3 rounded-xl border shadow-sm transition-all flex items-center gap-1.5 bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold uppercase active:scale-95"
+                            title="Ajouter comme traitement habituel / régulier"
+                          >
+                            <PlusCircle className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Suivre</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <p className="text-slate-600 text-sm leading-relaxed">{state.data.description}</p>

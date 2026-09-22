@@ -75,17 +75,12 @@ const getAI = () => {
     
     if (!apiKey || apiKey === "undefined" || apiKey === "") {
       throw new Error(
-        "Clé API Gemini non configurée. Veuillez renseigner votre clé API dans les paramètres de l'application (Aide > Clé API)."
+        "Service de recherche en ligne temporairement indisponible. Veuillez vérifier votre connexion."
       );
     }
     
     aiInstance = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build'
-        }
-      }
+      apiKey
     });
   }
   return aiInstance;
@@ -144,9 +139,18 @@ async function callGeminiWithFallback<T>(
         continue;
       }
       
-      // Erreur d'authentification ou permission : ne pas boucler inutilement
-      if (msg.includes("403") || msg.includes("PERMISSION_DENIED") || msg.includes("API_KEY_INVALID")) {
-        throw err;
+      // Erreur d'authentification ou clé révoquée / fuité : ne pas boucler inutilement
+      if (
+        msg.includes("leaked") ||
+        msg.includes("API key was reported as leaked")
+      ) {
+        throw new Error("Clé API signalée comme publique ou révoquée par Google. Veuillez configurer votre propre clé API gratuite depuis les Paramètres pour effectuer des recherches en ligne.");
+      }
+      if (msg.includes("API_KEY_INVALID")) {
+        throw new Error("Clé API invalide : vérifiez votre clé Google AI Studio (commence par AIzaSy...).");
+      }
+      if (msg.includes("403") || msg.includes("PERMISSION_DENIED")) {
+        throw new Error("Accès refusé par Google Gemini (403). Veuillez renseigner votre clé API personnelle sans restriction.");
       }
     }
   }
@@ -161,12 +165,7 @@ export const testApiKeyValidity = async (keyToTest?: string): Promise<{ success:
       return { success: false, message: "Aucune clé API fournie." };
     }
     const testAI = new GoogleGenAI({
-      apiKey: key,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build'
-        }
-      }
+      apiKey: key
     });
     
     let lastErr: any = null;
@@ -184,6 +183,12 @@ export const testApiKeyValidity = async (keyToTest?: string): Promise<{ success:
         const msg = String(err?.message || err);
         if (msg.includes("404") || msg.includes("not found") || msg.includes("no longer available")) {
           continue;
+        }
+        if (msg.includes("leaked") || msg.includes("API key was reported as leaked")) {
+          return {
+            success: false,
+            message: "Cette clé a été révoquée par Google (marquée comme compromise/publique). Rendez-vous sur aistudio.google.com/app/apikey pour en créer une nouvelle gratuitement."
+          };
         }
         if (msg.includes("permission denied") || msg.includes("403")) {
           return { 

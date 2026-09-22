@@ -548,6 +548,340 @@ export const LOCAL_MEDICATIONS_DB: Record<string, MedicationInfo> = {
     alternatives: ["Cétirizine (Zyrtec)", "Lévocétirizine (Xyzall)", "Loratadine (Clarityne)"],
     warningLevel: "low",
     usageTips: "Peut être pris à tout moment de la journée, avec ou sans aliments."
+  },
+  "kardegic": {
+    name: "Kardégic (Acide acétylsalicylique à faible dose)",
+    description: "Antiagrégant plaquettaire prévenant la formation de caillots sanguins (thrombose) dans les artères.",
+    indications: [
+      "Prévention secondaire après un infarctus du myocarde ou un AVC ischémique",
+      "Angine de poitrine (angor) stable ou instable",
+      "Après pontage aortocoronaire ou angioplastie coronaire avec stent"
+    ],
+    maxDailyDosage: {
+      generalMax: "75 mg à 300 mg par 24 heures en 1 seule prise selon prescription",
+      byIndication: [
+        {
+          indication: "Protection cardiovasculaire au long cours chez l'adulte",
+          maxDaily: "75 mg à 160 mg une fois par jour",
+          frequencyOrInterval: "1 sachet par jour au milieu d'un repas",
+          notes: "Prendre de préférence tous les jours à la même heure."
+        }
+      ],
+      safetyWarning: "Ne pas confondre avec l'aspirine à dose antalgique (500mg à 1000mg). Risque d'hémorragie digestive ou cérébrale. Ne jamais associer d'autres anti-inflammatoires (AINS) sans avis cardiologique."
+    },
+    contraindications: [
+      "Allergie à l'aspirine ou aux AINS",
+      "Ulcère gastroduodénal évolutif",
+      "Maladie hémorragique constitutionnelle ou acquise",
+      "Grossesse à partir du début du 6ème mois (24 semaines d'aménorrhée)"
+    ],
+    interactions: [
+      "Anticoagulants oraux (AVK, AOD) : risque hémorragique accru nécessitant surveillance étroite",
+      "Anti-inflammatoires non stéroïdiens (Ibuprofène, Kétoprofène) : diminution de l'effet cardioprotecteur et toxicité digestive",
+      "Méthotrexate à fortes doses"
+    ],
+    alternatives: ["Plavix (Clopidogrel)", "Efient (Prasugrel)", "Brilique (Ticagrélor)"],
+    warningLevel: "high",
+    usageTips: "Dissoudre la poudre dans un grand verre d'eau et prendre au cours d'un repas."
+  },
+  "omeprazole": {
+    name: "Oméprazole (Mopral)",
+    description: "Inhibiteur de la pompe à protons (IPP) puissant réduisant durablement la sécrétion acide de l'estomac.",
+    indications: [
+      "Reflux gastro-œsophagien (RGO) et brûlures d'estomac",
+      "Ulcère gastroduodénal et œsophagite par reflux",
+      "Prévention des ulcères sous traitement anti-inflammatoire (AINS)"
+    ],
+    maxDailyDosage: {
+      generalMax: "20 mg à 40 mg par 24 heures chez l'adulte",
+      byIndication: [
+        {
+          indication: "RGO et brûlures d'estomac modérées",
+          maxDaily: "10 mg à 20 mg par jour",
+          frequencyOrInterval: "1 gélule le matin à jeun 30 minutes avant le petit-déjeuner",
+          notes: "Traitement de courte durée (maximum 14 jours en automédication)."
+        },
+        {
+          indication: "Ulcère ou œsophagite sévère sous ordonnance",
+          maxDaily: "20 mg à 40 mg par jour",
+          frequencyOrInterval: "1 à 2 prises par jour",
+          notes: "Durée selon avis médical (généralement 4 à 8 semaines)."
+        }
+      ],
+      safetyWarning: "Avaler la gélule entière avec de l'eau sans l'écraser ni la croquer pour préserver les microgranules gastrorésistants."
+    },
+    contraindications: ["Hypersensibilité à l'oméprazole ou aux autres IPP", "Association au nelfinavir (antirétroviral)"],
+    interactions: ["Clopidogrel (diminution de l'efficacité antiagrégante)", "Méthotrexate à haute dose", "Ketoconazole (absorption diminuée)"],
+    alternatives: ["Inexium (Ésoméprazole)", "Pantoprazole (Eupantol)", "Gaviscon (Alginate en traitement d'appoint)"],
+    warningLevel: "low",
+    usageTips: "À prendre le matin à jeun avec un verre d'eau 30 minutes avant le petit-déjeuner."
+  },
+  "xanax": {
+    name: "Xanax (Alprazolam)",
+    description: "Anxiolytique de la famille des benzodiazépines indiqué dans le traitement des manifestations anxieuses sévères.",
+    indications: [
+      "Anxiété sévère et invalidante chez l'adulte",
+      "Attaques de panique avec ou sans agoraphobie",
+      "Prévention et traitement du delirium tremens et sevrage alcoolique"
+    ],
+    maxDailyDosage: {
+      generalMax: "0,75 mg à 2 mg par 24 heures (jusqu'à 4 mg max en milieu psychiatrique)",
+      byIndication: [
+        {
+          indication: "Anxiété généralisée chez l'adulte",
+          maxDaily: "0,75 mg à 1,5 mg par 24h répartis en plusieurs prises",
+          frequencyOrInterval: "0,25 mg à 0,5 mg 3 fois par jour",
+          notes: "Toujours débuter par la posologie la plus faible possible."
+        },
+        {
+          indication: "Sujet âgé ou insuffisant rénal/hépatique",
+          maxDaily: "0,5 mg à 0,75 mg par 24h maximum",
+          frequencyOrInterval: "0,25 mg 1 à 2 fois par jour",
+          notes: "Risque très élevé de chutes et de confusion."
+        }
+      ],
+      safetyWarning: "RISQUE MAJEUR DE DÉPENDANCE PHYSIQUE ET PSYCHIQUE, D'ACCOUTUMANCE ET DE SYNDROME DE SEVRAGE. La durée de traitement doit être la plus courte possible (maximum 8 à 12 semaines sevrage compris). Ne jamais arrêter brutalement."
+    },
+    contraindications: [
+      "Insuffisance respiratoire sévère",
+      "Syndrome d'apnée du sommeil",
+      "Insuffisance hépatique sévère (risque d'encéphalopathie)",
+      "Myasthénie",
+      "Allergie aux benzodiazépines"
+    ],
+    interactions: [
+      "Alcool (potentialisation massive de la sédation et dépression respiratoire : FORMELLEMENT INTERDIT)",
+      "Opioïdes (Morphine, Tramadol, Codéine : risque létal de sédation profonde et coma)",
+      "Autres sédatifs et antihistaminiques H1 sédatifs"
+    ],
+    alternatives: ["Thérapie cognitivo-comportementale (TCC)", "Atarax (Hydroxyzine)", "Euphytose / Phytothérapie pour anxiété légère"],
+    warningLevel: "high",
+    usageTips: "Traitement strict sur ordonnance. Ne pas conduire ni utiliser de machines (baisse de vigilance)."
+  },
+  "lexomil": {
+    name: "Lexomil (Bromazépam)",
+    description: "Anxiolytique puissant de la famille des benzodiazépines (comprimé baguette quadrisécable).",
+    indications: ["Anxiété réactionnelle ou généralisée sévère", "Crises d'angoisse aiguës invalidantes"],
+    maxDailyDosage: {
+      generalMax: "6 mg par 24 heures chez l'adulte ambulatoire (1 baguette complète)",
+      byIndication: [
+        {
+          indication: "Anxiété chez l'adulte",
+          maxDaily: "6 mg par 24h (1 baguette sécable en 4)",
+          frequencyOrInterval: "1/4 de comprimé le matin et midi, 1/2 le soir au coucher",
+          notes: "Durée maximale légale de prescription : 12 semaines."
+        }
+      ],
+      safetyWarning: "DÉPENDANCE RAPIDE ET AMNÉSIE ANTEROGRADE. L'arrêt doit obligatoirement être très progressif pour éviter l'effet rebond d'angoisse et les convulsions."
+    },
+    contraindications: ["Myasthénie", "Insuffisance respiratoire grave", "Apnée du sommeil", "Insuffisance hépatique sévère"],
+    interactions: ["Alcool (proscrit absolu)", "Dérivés morphiniques (dépression respiratoire)", "Somnifères"],
+    alternatives: ["Alprazolam (Xanax)", "Hydroxyzine (Atarax)", "Soutien psychothérapeutique"],
+    warningLevel: "high",
+    usageTips: "Prendre avec un verre d'eau. La prise du soir au coucher aide à l'endormissement en cas d'insomnie liée à l'anxiété."
+  },
+  "tahor": {
+    name: "Tahor (Atorvastatine)",
+    description: "Hypolipémiant de la famille des statines réduisant le cholestérol LDL et les triglycérides sanguins.",
+    indications: [
+      "Hypercholestérolémie primaire et dyslipidémie mixte",
+      "Prévention des accidents cardiovasculaires (infarctus, AVC) chez les patients à haut risque"
+    ],
+    maxDailyDosage: {
+      generalMax: "80 mg par 24 heures chez l'adulte",
+      byIndication: [
+        {
+          indication: "Traitement standard de l'hypercholestérolémie",
+          maxDaily: "10 mg à 40 mg en prise unique par jour",
+          frequencyOrInterval: "1 comprimé par jour à n'importe quel moment (avec ou sans repas)",
+          notes: "Dose initiale habituelle de 10 mg/jour, réévaluée après 4 semaines."
+        }
+      ],
+      safetyWarning: "Alerter immédiatement le médecin en cas de douleurs musculaires inexpliquées, crampes ou faiblesse (risque de rhabdomyolyse)."
+    },
+    contraindications: ["Affection hépatique évolutive", "Grossesse et allaitement", "Hypersensibilité à l'atorvastatine"],
+    interactions: ["Jus de pamplemousse en grande quantité (inhibiteur du CYP3A4, augmente les taux de statine)", "Fibrates (risque musculaire accru)", "Érythromycine, clarithromycine"],
+    alternatives: ["Crestor (Rosuvastatine)", "Pravastatine", "Ezetimibe (Ezetrol)"],
+    warningLevel: "medium",
+    usageTips: "Prendre une fois par jour, à heure régulière. Maintenir en parallèle un régime pauvre en graisses saturées."
+  },
+  "forlax": {
+    name: "Forlax (Macrogol 4000)",
+    description: "Laxatif osmotique augmentant le volume des liquides intestinaux pour traiter la constipation en douceur.",
+    indications: ["Traitement symptomatique de la constipation occasionnelle ou chronique chez l'adulte et l'enfant"],
+    maxDailyDosage: {
+      generalMax: "1 à 2 sachets (10 g à 20 g) par 24 heures chez l'adulte",
+      byIndication: [
+        {
+          indication: "Constipation chez l'adulte",
+          maxDaily: "20 g (2 sachets) par jour",
+          frequencyOrInterval: "1 à 2 sachets en 1 seule prise le matin",
+          notes: "L'effet se manifeste en 24 à 48 heures."
+        }
+      ],
+      safetyWarning: "Ne pas utiliser de manière prolongée sans rechercher la cause. Boire abondamment d'eau (1,5 à 2 L / jour) et privilégier les fibres alimentaires."
+    },
+    contraindications: ["Maladies inflammatoires sévères de l'intestin (Crohn, RCH)", "Mégacôlon toxique", "Perforation ou occlusion digestive", "Douleurs abdominales de cause indéterminée"],
+    interactions: ["Délai de 2 heures conseillé avant la prise d'autres médicaments pour éviter de réduire leur absorption"],
+    alternatives: ["Duphalac (Lactulose)", "Transipeg", "Psyllium / Graines de lin"],
+    warningLevel: "low",
+    usageTips: "Dissoudre le contenu de chaque sachet dans un verre d'eau juste avant la prise. Prendre de préférence le matin."
+  },
+  "levothyrox": {
+    name: "Lévothyrox (Lévothyroxine)",
+    description: "Hormone thyroïdienne de synthèse (T4) compensant le déficit en hormones sécrétées par la glande thyroïde.",
+    indications: [
+      "Hypothyroïdie primitive ou secondaire",
+      "Après thyroïdectomie totale ou subtotale",
+      "Freinage de la sécrétion de TSH dans les goitres simples ou nodules thyroïdiens"
+    ],
+    maxDailyDosage: {
+      generalMax: "Posologie strictement individuelle fixée par le médecin selon les dosages réguliers de TSH",
+      byIndication: [
+        {
+          indication: "Substitution thyroïdienne chez l'adulte",
+          maxDaily: "Généralement 75 µg à 150 µg par jour",
+          frequencyOrInterval: "1 prise unique le matin à jeun 30 minutes avant le petit-déjeuner",
+          notes: "Toujours prendre avec de l'eau pure."
+        }
+      ],
+      safetyWarning: "MÉDICAMENT À MARGE THÉRAPEUTIQUE ÉTROITE. Prendre impérativement tous les matins à jeun au moins 30 minutes avant le petit-déjeuner avec de l'eau pure. Ne jamais changer de marque ni de dosage sans avis médical."
+    },
+    contraindications: ["Hyperthyroïdie non traitée", "Insuffisance surrénale non traitée", "Infarctus du myocarde en phase aiguë", "Myocardite aiguë"],
+    interactions: [
+      "Sels de fer, calcium, pansements digestifs (Gaviscon, Smecta) : espacer d'au moins 2 à 4 heures pour éviter d'inhiber l'absorption",
+      "Anticoagulants oraux (renforcement de l'action anticoagulante)"
+    ],
+    alternatives: ["Euthyrox", "L-Thyroxin Henning", "Thyrofix"],
+    warningLevel: "medium",
+    usageTips: "Prendre impérativement le matin au lever avec de l'eau plate, au moins 30 minutes avant le café, thé ou petit-déjeuner."
+  },
+  "metformine": {
+    name: "Metformine (Glucophage)",
+    description: "Antidiabétique oral de la famille des biguanides réduisant la glycémie sans provoquer d'hypoglycémie.",
+    indications: [
+      "Diabète de type 2 (en première intention)",
+      "Syndrome des ovaires polykystiques (hors AMM)"
+    ],
+    maxDailyDosage: {
+      generalMax: "2000 mg à 3000 mg par 24 heures chez l'adulte (répartis en 2 ou 3 prises)",
+      byIndication: [
+        {
+          indication: "Diabète de type 2",
+          maxDaily: "Jusqu'à 2000 mg ou 3000 mg/jour selon la fonction rénale",
+          frequencyOrInterval: "1 comprimé au milieu ou à la fin de chaque repas principal",
+          notes: "Commencer à faible dose (500 ou 850 mg) pour éviter les troubles digestifs."
+        }
+      ],
+      safetyWarning: "RISQUE RARE MAIS GRAVE D'ACIDOSE LACTIQUE. Doit être interrompu 48h avant tout examen radiologique avec injection de produit de contraste iodé et avant toute chirurgie sous anesthésie générale."
+    },
+    contraindications: ["Insuffisance rénale sévère (DFG < 30 ml/min)", "Insuffisance cardiaque ou respiratoire décompensée", "Acidose métabolique aiguë", "Alcoolisme aigu"],
+    interactions: ["Produits de contraste iodés", "Alcool à fortes doses (augmente le risque d'acidose lactique)"],
+    alternatives: ["Inhibiteurs de la DPP-4 (Januvia)", "Sulfamides hypoglycémiants", "Inhibiteurs du SGLT2 (Jardiance, Forxiga)"],
+    warningLevel: "medium",
+    usageTips: "Prendre pendant ou immédiatement après le repas pour limiter les nausées et douleurs abdominales."
+  },
+  "amlodipine": {
+    name: "Amlodipine (Amlor)",
+    description: "Inhibiteur calcique vasodilatateur abaissant la pression artérielle et améliorant l'oxygénation cardiaque.",
+    indications: [
+      "Hypertension artérielle (HTA)",
+      "Angine de poitrine (angor d'effort et angor de Prinzmetal)"
+    ],
+    maxDailyDosage: {
+      generalMax: "10 mg par 24 heures en 1 seule prise quotidienne",
+      byIndication: [
+        {
+          indication: "Hypertension artérielle chez l'adulte",
+          maxDaily: "5 mg à 10 mg une fois par jour",
+          frequencyOrInterval: "1 prise unique quotidienne à heure fixe",
+          notes: "Dose initiale recommandée : 5 mg une fois par jour."
+        }
+      ],
+      safetyWarning: "L'effet indésirable le plus fréquent est l'œdème des chevilles ou des membres inférieurs (gonflement) lié à la vasodilatation. Ne pas interrompre le traitement sans avis médical."
+    },
+    contraindications: ["Hypotension artérielle sévère", "Choc cardiogénique", "Sténose aortique de haut grade", "Insuffisance cardiaque hémodynamiquement instable"],
+    interactions: ["Jus de pamplemousse (augmente la concentration sanguine)", "Dantrolène", "Inhibiteurs puissants du CYP3A4"],
+    alternatives: ["Lercanidipine (Lercan)", "Félodipine", "IEC (Ramipril, Périndopril)"],
+    warningLevel: "medium",
+    usageTips: "Peut être pris indifféremment pendant ou en dehors des repas, de préférence le matin."
+  },
+  "bisoprolol": {
+    name: "Bisoprolol (Cardensiel)",
+    description: "Bêtabloquant cardio-sélectif réduisant la fréquence cardiaque et la pression artérielle.",
+    indications: [
+      "Hypertension artérielle essentielle",
+      "Angine de poitrine chronique stable",
+      "Insuffisance cardiaque chronique stable avec réduction de la fonction ventriculaire"
+    ],
+    maxDailyDosage: {
+      generalMax: "10 mg par 24 heures (jusqu'à 20 mg dans l'HTA sévère)",
+      byIndication: [
+        {
+          indication: "Hypertension artérielle et angor",
+          maxDaily: "5 mg à 10 mg par jour",
+          frequencyOrInterval: "1 comprimé le matin",
+          notes: "Posologie augmentée très progressivement."
+        }
+      ],
+      safetyWarning: "NE JAMAIS ARRÊTER BRUTALEMENT LE TRAITEMENT (risque d'infarctus ou de rebond tensionnel aigu). Surveillance du pouls nécessaire (risque de bradycardie excessive < 50 bpm)."
+    },
+    contraindications: ["Asthme sévère et bronchopneumopathie chronique obstructive (BPCO)", "Bradycardie marquée (< 50 bpm)", "Bloc auriculo-ventriculaire (BAV) du 2e ou 3e degré", "Choc cardiogénique"],
+    interactions: ["Diltiazem, Vérapamil (risque d'arrêt cardiaque et bradycardie majeure)", "Amiodarone", "Anti-arythmiques"],
+    alternatives: ["Nébivolol (Temerit)", "Métoprolol (Séloken)", "Aténolol (Ténormine)"],
+    warningLevel: "high",
+    usageTips: "Prendre le matin avec un verre d'eau, avant ou pendant le petit-déjeuner. Ne pas croquer."
+  },
+  "eliquis": {
+    name: "Eliquis (Apixaban)",
+    description: "Anticoagulant oral direct (AOD) inhibiteur direct du facteur Xa empêchant la formation de caillots sanguins.",
+    indications: [
+      "Prévention de l'AVC et de l'embolie systémique chez les patients atteints de fibrillation atriale non valvulaire (FA)",
+      "Traitement et prévention des récidives de thrombose veineuse profonde (phlébite) et d'embolie pulmonaire"
+    ],
+    maxDailyDosage: {
+      generalMax: "5 mg à 10 mg par 24 heures (divisé en 2 prises régulières)",
+      byIndication: [
+        {
+          indication: "Fibrillation atriale (prévention AVC)",
+          maxDaily: "5 mg deux fois par jour (ou 2,5 mg deux fois par jour chez les sujets âgés ou insuffisants rénaux)",
+          frequencyOrInterval: "1 prise matin et soir à 12h d'intervalle",
+          notes: "Respecter scrupuleusement l'horaire bi-quotidien."
+        }
+      ],
+      safetyWarning: "RISQUE HÉMORRAGIQUE MAJEUR. Ne pas associer d'anti-inflammatoires (AINS) ni d'aspirine sans validation formelle du cardiologue. Prévenir le médecin ou dentiste avant toute intervention chirurgicale."
+    },
+    contraindications: ["Saignement évolutif cliniquement significatif", "Atteinte hépatique avec coagulopathie", "Lésion ou affection à risque hémorragique élevé"],
+    interactions: ["Aspirine, AINS, héparines (majoration du risque de saignement)", "Kétoconazole, itraconazole", "Millepertuis, rifampicine"],
+    alternatives: ["Xarelto (Rivaroxaban)", "Pradaxa (Dabigatran)", "AVK (Coumadine, Previscan)"],
+    warningLevel: "high",
+    usageTips: "Avaler avec de l'eau, pendant ou en dehors des repas. En cas d'oubli, prendre immédiatement puis continuer au rythme habituel."
+  },
+  "debridat": {
+    name: "Débridat (Trimébutine)",
+    description: "Antispasmodique et régulateur de la motricité intestinale pour le soulagement des douleurs digestives.",
+    indications: [
+      "Douleurs et spasmes intestinaux",
+      "Syndrome du côlon irritable (colopathie fonctionnelle)",
+      "Ballonnements et inconfort abdominal"
+    ],
+    maxDailyDosage: {
+      generalMax: "300 mg à 600 mg par 24 heures chez l'adulte",
+      byIndication: [
+        {
+          indication: "Spasmes intestinaux et côlon irritable",
+          maxDaily: "300 mg par jour (jusqu'à 600 mg sur avis médical)",
+          frequencyOrInterval: "1 comprimé de 100 mg ou 200 mg 3 fois par jour avant les repas",
+          notes: "Prendre avant les trois principaux repas."
+        }
+      ],
+      safetyWarning: "Réservé aux douleurs digestives spasmodiques. Si les douleurs persistent ou s'accompagnent de fièvre, consulter un médecin."
+    },
+    contraindications: ["Hypersensibilité à la trimébutine", "Femme enceinte au 1er trimestre"],
+    interactions: ["Aucune interaction médicamenteuse majeure connue"],
+    alternatives: ["Spasfon (Phloroglucinol)", "Météospasmyl", "Duspatalin (Mébévérine)"],
+    warningLevel: "low",
+    usageTips: "Prendre les comprimés avec un verre d'eau avant les repas."
   }
 };
 
@@ -588,22 +922,26 @@ export const MEDICATION_ALIASES: Record<string, string> = {
   "salbutamol": "ventoline",
   "bricanyl": "ventoline",
 
-  // Aspirine
+  // Aspirine & Kardégic
   "aspirine": "aspirine",
   "aspegic": "aspirine",
   "aspégic": "aspirine",
-  "kardegic": "aspirine",
-  "kardégic": "aspirine",
+  "kardegic": "kardegic",
+  "kardégic": "kardegic",
+  "cardegic": "kardegic",
+  "cardégic": "kardegic",
   "acide acetylsalicylique": "aspirine",
   "acide acétylsalicylique": "aspirine",
 
-  // Inexium / IPP
+  // IPP / Inexium / Oméprazole
   "inexium": "inexium",
   "esomeprazole": "inexium",
   "ésoméprazole": "inexium",
-  "mopral": "inexium",
-  "omeprazole": "inexium",
-  "oméprazole": "inexium",
+  "mopral": "omeprazole",
+  "omeprazole": "omeprazole",
+  "oméprazole": "omeprazole",
+  "eupantol": "omeprazole",
+  "pantoprazole": "omeprazole",
 
   // Imodium / Transit
   "imodium": "imodium",
@@ -637,7 +975,54 @@ export const MEDICATION_ALIASES: Record<string, string> = {
   "desloratadine": "aerius",
   "zyrtec": "aerius",
   "cetirizine": "aerius",
-  "cétirizine": "aerius"
+  "cétirizine": "aerius",
+
+  // Anxiolytiques
+  "xanax": "xanax",
+  "alprazolam": "xanax",
+  "lexomil": "lexomil",
+  "bromazepam": "lexomil",
+  "bromazépam": "lexomil",
+
+  // Statines / Cholestérol
+  "tahor": "tahor",
+  "atorvastatine": "tahor",
+  "crestor": "tahor",
+  "rosuvastatine": "tahor",
+
+  // Transit / Laxatif & Spasmes
+  "forlax": "forlax",
+  "macrogol": "forlax",
+  "transipeg": "forlax",
+  "movicol": "forlax",
+  "debridat": "debridat",
+  "débridat": "debridat",
+  "trimebutine": "debridat",
+  "trimébutine": "debridat",
+
+  // Thyroïde
+  "levothyrox": "levothyrox",
+  "lévothyrox": "levothyrox",
+  "levothyroxine": "levothyrox",
+  "lévothyroxine": "levothyrox",
+  "euthyrox": "levothyrox",
+
+  // Diabète
+  "metformine": "metformine",
+  "glucophage": "metformine",
+  "stagid": "metformine",
+
+  // Cardiologie & Tension
+  "amlodipine": "amlodipine",
+  "amlor": "amlodipine",
+  "bisoprolol": "bisoprolol",
+  "cardensiel": "bisoprolol",
+
+  // Anticoagulants
+  "eliquis": "eliquis",
+  "apixaban": "eliquis",
+  "xarelto": "eliquis",
+  "rivaroxaban": "eliquis"
 };
 
 /**

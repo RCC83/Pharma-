@@ -4,19 +4,19 @@
   "description": "Consultez les indications et contre-indications de vos médicaments instantanément avec l'IA.",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/822/822168.png",
+      "src": "/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/822/822168.png",
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/822/822168.png",
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"

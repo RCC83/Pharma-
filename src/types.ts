@@ -21,6 +21,7 @@ export interface MedicationInfo {
   alternatives: string[]; // Médicaments alternatifs
   warningLevel: 'low' | 'medium' | 'high'; // Niveau d'alerte général
   usageTips: string; // Conseils d'utilisation brefs
+  isReserve?: boolean; // Médicament en réserve / si besoin (secours ou prise ponctuelle)
 }
 
 export interface SearchState {
