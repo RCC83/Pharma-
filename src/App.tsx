@@ -39,8 +39,22 @@ import {
   Key,
   RefreshCw,
   Eye,
-  EyeOff
+  EyeOff,
+  Database,
+  ShieldCheck,
+  HardDrive,
+  FileText
 } from 'lucide-react';
+import {
+  syncAndMigrateLocalStorageToIndexedDB,
+  getAllMedicationsFromDB,
+  saveMedicationToDB,
+  removeMedicationFromDB,
+  saveSettingToDB,
+  getSettingFromDB,
+  isIndexedDBSupported
+} from './services/indexedDbService';
+import { generatePharmacyPDF } from './services/pdfExportService';
 
 const App: React.FC = () => {
   console.log("PharmaGuide: App mounting...");
@@ -75,6 +89,27 @@ const App: React.FC = () => {
   });
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isDbReady, setIsDbReady] = useState(false);
+
+  // Synchronisation et migration automatique avec IndexedDB
+  useEffect(() => {
+    syncAndMigrateLocalStorageToIndexedDB()
+      .then(async ({ medicationsCount, userContext: syncedContext }) => {
+        console.log(`[PharmaGuide] IndexedDB synchronisée avec succès (${medicationsCount} médicaments)`);
+        const meds = await getAllMedicationsFromDB();
+        if (meds && meds.length > 0) {
+          setPatientMedications(meds);
+        }
+        if (syncedContext) {
+          setUserContext(syncedContext);
+        }
+        setIsDbReady(true);
+      })
+      .catch((err) => {
+        console.warn("[PharmaGuide] Repli sur localStorage :", err);
+        setIsDbReady(false);
+      });
+  }, []);
 
   useEffect(() => {
     // Handle install prompt
@@ -180,20 +215,48 @@ const App: React.FC = () => {
     }
   };
 
-  const addToPatientList = () => {
+  const addToPatientList = async () => {
     if (!state.data) return;
-    if (patientMedications.some(m => m.name.toLowerCase() === state.data!.name.toLowerCase())) {
-      toast.info(`${state.data.name} est déjà dans votre pharmacie.`);
+    const target = state.data;
+    if (patientMedications.some(m => m.name.toLowerCase() === target.name.toLowerCase())) {
+      toast.info(`${target.name} est déjà dans votre pharmacie.`);
       return;
     }
-    setPatientMedications(prev => [state.data!, ...prev]);
-    toast.success(`${state.data.name} ajouté à votre pharmacie !`);
+    setPatientMedications(prev => [target, ...prev]);
+    try {
+      await saveMedicationToDB(target);
+      toast.success(`${target.name} synchronisé dans votre pharmacie !`, {
+        description: "Enregistré de manière permanente dans IndexedDB locale"
+      });
+    } catch {
+      toast.success(`${target.name} ajouté à votre pharmacie !`);
+    }
   };
 
-  const removeFromPatientList = (e: React.MouseEvent, name: string) => {
+  const removeFromPatientList = async (e: React.MouseEvent, name: string) => {
     e.stopPropagation();
     setPatientMedications(prev => prev.filter(m => m.name !== name));
-    toast.info(`${name} retiré de votre pharmacie.`);
+    try {
+      await removeMedicationFromDB(name);
+      toast.info(`${name} retiré de votre pharmacie.`);
+    } catch {
+      toast.info(`${name} retiré.`);
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (patientMedications.length === 0 && !userContext.trim()) {
+      toast.error("Votre pharmacie est vide, rien à exporter en PDF.");
+      return;
+    }
+    try {
+      generatePharmacyPDF(patientMedications, userContext);
+      toast.success("Document PDF généré avec succès !", {
+        description: "Fiche médicale récapitulative prête à imprimer ou partager."
+      });
+    } catch (err: any) {
+      toast.error("Erreur lors de la génération du PDF : " + (err?.message || "Inconnue"));
+    }
   };
 
   const exportMedications = () => {
@@ -334,36 +397,99 @@ const App: React.FC = () => {
           </div>
 
           {showPharmacy && (
-            <div className="absolute top-full left-0 w-full bg-white border-b border-slate-200 shadow-2xl z-40 animate-fade-in-up max-h-[80vh] overflow-y-auto no-scrollbar">
-              <div className="p-4 space-y-6">
-                <div className="space-y-3">
+            <div className="absolute top-full left-0 w-full bg-white border-b border-slate-200 shadow-2xl z-40 animate-fade-in-up max-h-[85vh] overflow-y-auto no-scrollbar">
+              <div className="p-4 space-y-5">
+                {/* En-tête avec statut de synchronisation */}
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <Pill className="w-4 h-4 text-blue-600" /> Ma Pharmacie
+                    </h2>
+                    <p className="text-[10px] text-slate-500">Persistance locale permanente sur votre appareil</p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {isDbReady ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <Database className="w-3 h-3 text-emerald-600" />
+                        IndexedDB synchronisé
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                        <HardDrive className="w-3 h-3 text-amber-600" />
+                        Stockage local
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bloc d'export et bilan médical */}
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      Bilan & Partage Médical
+                    </span>
+                    <span className="text-[9px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 font-semibold">
+                      Format Imprimable
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Générez une fiche récapitulative officielle de vos traitements et antécédents, prête à imprimer ou à présenter à votre médecin traitant ou pharmacien.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <button 
+                      onClick={handleExportPDF}
+                      className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95"
+                      title="Télécharger votre bilan en document PDF imprimable"
+                    >
+                      <FileText className="w-4 h-4 shrink-0" />
+                      <span>Fiche PDF (.pdf)</span>
+                    </button>
+
+                    <button 
+                      onClick={exportMedications}
+                      className="py-2 px-3 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95"
+                      title="Copier ou exporter le résumé texte simple"
+                    >
+                      <Stethoscope className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span>Fiche TXT</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Profil Santé */}
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      <UserCircle className="w-3 h-3" /> Mon Profil Santé
+                      <UserCircle className="w-3.5 h-3.5 text-blue-600" /> Mon Profil Santé (Antécédents & Allergies)
                     </h3>
                   </div>
                   <textarea 
-                    className="w-full p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:italic"
-                    placeholder="Ex: Allergique à la pénicilline, hypertension, enceinte..."
+                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:italic"
+                    placeholder="Ex: Allergique à la pénicilline, asthme, hypertension, enceinte..."
                     rows={2}
                     value={userContext}
-                    onChange={(e) => setUserContext(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserContext(val);
+                      saveSettingToDB("context", val).catch(() => {});
+                    }}
                   />
-                  <p className="text-[9px] text-slate-400 italic">Ces informations personnalisent l'analyse des risques par l'IA.</p>
+                  <p className="text-[9px] text-slate-400 italic">Mémorisé de façon permanente dans IndexedDB pour ajuster les analyses posologiques de l'IA.</p>
                 </div>
 
-                <div className="space-y-3">
+                {/* Mes Médicaments */}
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      <Pill className="w-3 h-3" /> Mes Médicaments Actuels
+                      <Pill className="w-3.5 h-3.5 text-blue-600" /> Mes Médicaments ({patientMedications.length})
                     </h3>
-                    {(patientMedications.length > 0 || userContext.trim()) && (
-                      <button 
-                        onClick={exportMedications}
-                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors px-2 py-1 bg-blue-50 rounded-lg"
-                      >
-                        <Download className="w-3 h-3" /> Exporter
-                      </button>
+                    {patientMedications.length > 0 && (
+                      <span className="text-[9px] font-medium text-slate-400">
+                        Cliquez pour afficher la notice
+                      </span>
                     )}
                   </div>
                   {patientMedications.length > 0 ? (
@@ -372,7 +498,7 @@ const App: React.FC = () => {
                         <div 
                           key={idx}
                           onClick={() => selectFromList(med)}
-                          className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50 border border-slate-100 rounded-xl cursor-pointer transition-all group"
+                          className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50/80 border border-slate-100 rounded-xl cursor-pointer transition-all group"
                         >
                           <div className="flex items-center gap-3">
                             <div className={`w-2 h-2 rounded-full shrink-0 ${med.warningLevel === 'high' ? 'bg-red-500' : med.warningLevel === 'medium' ? 'bg-orange-500' : 'bg-emerald-500'}`} />
@@ -388,6 +514,7 @@ const App: React.FC = () => {
                           <button 
                             onClick={(e) => removeFromPatientList(e, med.name)}
                             className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            title="Retirer de ma pharmacie"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -395,7 +522,10 @@ const App: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-400 text-center py-4 italic border border-dashed border-slate-200 rounded-xl">Aucun médicament enregistré.</p>
+                    <div className="text-xs text-slate-400 text-center py-6 italic border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                      <p>Aucun médicament enregistré.</p>
+                      <p className="text-[10px] text-slate-400 mt-1 not-italic">Recherchez un médicament et cliquez sur « Ajouter à ma pharmacie ».</p>
+                    </div>
                   )}
                 </div>
 
@@ -450,18 +580,7 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-slate-50 flex flex-col gap-2">
-                  <button 
-                    onClick={() => {
-                      setShowInfo(false);
-                      setShowApiKeyModal(true);
-                    }}
-                    className="w-full py-2 text-[11px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    <KeyRound className="w-3.5 h-3.5" />
-                    <span>Paramètres avancés / Clé API</span>
-                  </button>
-
+                <div className="pt-2 border-t border-slate-50">
                   <button 
                     onClick={() => setShowInfo(false)}
                     className="w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-indigo-100 transition-all"

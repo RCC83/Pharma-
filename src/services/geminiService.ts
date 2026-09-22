@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { MedicationInfo } from "../types";
 import { LOCAL_MEDICATIONS_DB, findLocalMedication } from "../data/localMedicationsDb";
+import { getCachedSearchFromDB, saveCachedSearchToDB } from "./indexedDbService";
 
 let aiInstance: GoogleGenAI | null = null;
 
@@ -351,6 +352,18 @@ export const fetchMedicationInfo = async (medicationName: string, userContext: s
     return cachedMatch;
   }
 
+  // 3. Recherche dans la base de données IndexedDB (accès persistant hors-ligne)
+  try {
+    const idbMatch = await getCachedSearchFromDB(medicationName);
+    if (idbMatch) {
+      console.log(`[PharmaGuide] Données récupérées depuis IndexedDB pour "${medicationName}".`);
+      setCachedMedication(medicationName, userContext, idbMatch);
+      return idbMatch;
+    }
+  } catch (e) {
+    // Non bloquant
+  }
+
   const ai = getAI();
   const contextPrompt = userContext 
     ? `IMPORTANT : L'utilisateur a le profil de santé suivant : "${userContext}". Analyse s'il existe des risques spécifiques, des ajustements posologiques ou des contre-indications majeures liées à ce profil pour ce médicament et mentionne-les explicitement.`
@@ -423,9 +436,10 @@ Points cruciaux à inclure :
     }
   });
 
-  // Mise en cache immédiate pour que toute consultation ultérieure soit instantanée
+  // Mise en cache immédiate pour que toute consultation ultérieure soit instantanée (Mémoire + IndexedDB)
   if (result) {
     setCachedMedication(medicationName, userContext, result);
+    saveCachedSearchToDB(medicationName, result).catch(() => {});
   }
 
   return result;

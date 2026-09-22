@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pharmaguide-v3';
+const CACHE_NAME = 'pharmaguide-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
