@@ -9,11 +9,19 @@ lerna-debug.log*
 
 # node_modules
 node_modules
-# dist
-# dist-ssr
+
+# Production build output
+dist
+dist-ssr
 *.local
 
-# Editor directories and files
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,3 +31,4 @@ node_modules
 *.njsproj
 *.sln
 *.sw?
+.env
